@@ -7,7 +7,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import os
 
 # Game configuration
-GRID_SIZE = 20
+GRID_SIZE = 12
 EMPTY = 0
 TREE = 1
 ZEBRA = 2
@@ -50,7 +50,7 @@ def add_icon_to_plot(ax, x, y, icon, zorder=1):
 class DroneSafariGame:
     def __init__(self):
         self.grid = np.zeros((GRID_SIZE, GRID_SIZE))
-        self.drone_pos = [10, 10]  # Start in middle of grid
+        self.drone_pos = [6, 6]  # Start in middle of grid
         self.drone_facing = 'North'  # Can be North, East, South, West
         self.animals_photographed = {'zebra': False, 'elephant': False, 'oryx': False}
         self.pictures_remaining = 5  # Limited number of pictures
@@ -64,15 +64,21 @@ class DroneSafariGame:
         self.failure_reason = None  # Track specific failure reason
         self.message = "Game started! Navigate carefully. You can take up to 5 pictures."
         
+        # Trail tracking for visualization
+        self.movement_trail = []  # Track (prev_pos, new_pos) for movement lines
+        self.rotation_trail = []  # Track (pos, prev_facing, new_facing) for rotation indicators
+        self.prev_pos = None  # Previous position for trail
+        self.prev_facing = None  # Previous facing direction for rotation trail
+        
         self._setup_grid()
         
     def _setup_grid(self):
         """Initialize the grid with trees and animals"""
-        # Add some trees randomly
+        # Add some trees randomly (adjusted for 12x12 grid)
         tree_positions = [
-            (3, 5), (7, 12), (15, 8), (2, 17), (18, 3),
-            (9, 2), (14, 15), (6, 9), (11, 18), (4, 14),
-            (16, 6), (8, 16), (12, 4), (5, 11), (17, 13)
+            (2, 3), (4, 8), (9, 5), (1, 10), (11, 2),
+            (5, 1), (8, 9), (3, 6), (7, 11), (2, 9),
+            (10, 4), (5, 3), (9, 8), (3, 4), (11, 6)
         ]
         
         for pos in tree_positions:
@@ -81,9 +87,9 @@ class DroneSafariGame:
         
         # Place animals in safe positions (not too close to trees or drone)
         animal_positions = {
-            ZEBRA: (5, 5),
-            ELEPHANT: (15, 15), 
-            ORYX: (3, 15)
+            ZEBRA: (3, 3),
+            ELEPHANT: (9, 9), 
+            ORYX: (2, 9)
         }
         
         for animal, pos in animal_positions.items():
@@ -187,9 +193,17 @@ class DroneSafariGame:
             return self.message
         
         # Move is valid
+        # Store previous position for trail before updating
+        if self.prev_pos is None:
+            self.prev_pos = self.drone_pos[:]  # Copy current position as previous
+        else:
+            # Add movement trail
+            self.movement_trail.append((self.prev_pos[:], self.drone_pos[:]))
+            self.prev_pos = self.drone_pos[:]
+        
         self.drone_pos = [new_row, new_col]
         self.total_moves += 1  # Increment move counter
-        self.message = f"Moved {move_type} to position ({new_row}, {new_col})"
+        self.message = f"Moved {move_type} to position ({new_row}, {new_col}), facing {self.drone_facing}"
         return self.message
     
     def turn(self, direction):
@@ -202,10 +216,18 @@ class DroneSafariGame:
         
         facing_index = list(DIRECTIONS.keys()).index(self.drone_facing)
         
-        if direction == 'right':
+        if direction == 'left':
             new_facing_index = (facing_index - 1) % 4
         else:  # right
             new_facing_index = (facing_index + 1) % 4
+
+        # Store previous facing for trail
+        if self.prev_facing is None:
+            self.prev_facing = self.drone_facing
+        else:
+            # Add rotation trail
+            self.rotation_trail.append((self.drone_pos[:], self.prev_facing, self.drone_facing))
+            self.prev_facing = self.drone_facing
         
         self.drone_facing = list(DIRECTIONS.keys())[new_facing_index]
         self.total_turns += 1  # Increment turn counter
@@ -232,17 +254,36 @@ class DroneSafariGame:
         target_row = self.drone_pos[0] + 2 * dr
         target_col = self.drone_pos[1] + 2 * dc
         
-        # Record the photographed location for visualization (regardless of what's there)
-        if self._is_valid_position(target_row, target_col):
-            self.photographed_locations[(target_row, target_col)] = self.pictures_taken
+        # Check if there's a tree blocking the view (1 cell away from drone)
+        blocking_row = self.drone_pos[0] + dr
+        blocking_col = self.drone_pos[1] + dc
         
         # Check if target is out of bounds
         if not self._is_valid_position(target_row, target_col):
+            # Record the photographed location for visualization (out of bounds shot)
+            if self._is_valid_position(target_row, target_col):
+                self.photographed_locations[(target_row, target_col)] = self.pictures_taken
             self.message = f"Picture #{self.pictures_taken} wasted! No animal in range to photograph. {self.pictures_remaining} pictures remaining."
             if self.pictures_remaining == 0:
                 self.game_over = True
                 self.message += " Game Over - No pictures left!"
             return self.message
+        
+        # Check if there's a tree blocking the view
+        if (self._is_valid_position(blocking_row, blocking_col) and 
+            self.grid[blocking_row, blocking_col] == TREE):
+            # Record the photographed location as the blocking tree (where photo was actually taken)
+            self.photographed_locations[(blocking_row, blocking_col)] = self.pictures_taken
+            self.message = f"Picture #{self.pictures_taken} wasted! A tree is blocking your view. {self.pictures_remaining} pictures remaining."
+            if self.pictures_remaining == 0:
+                self.game_over = True
+                self.failure_reason = "out_of_pictures"
+                self.message += " Game Over - No pictures left and mission incomplete!"
+            return self.message
+        
+        # Record the photographed location for visualization (normal case - target location)
+        if self._is_valid_position(target_row, target_col):
+            self.photographed_locations[(target_row, target_col)] = self.pictures_taken
         
         animal_value = self.grid[target_row, target_col]
         
@@ -302,12 +343,55 @@ class DroneSafariGame:
         }
         return status
     
+    def get_grid_string(self):
+        """Get a text representation of the current game grid"""
+        # Create symbols for different elements
+        symbols = {
+            EMPTY: '.',
+            TREE: 'T',
+            ZEBRA: 'Z',
+            ELEPHANT: 'E',
+            ORYX: 'O'
+        }
+        
+        # Direction symbols for drone
+        direction_symbols = {
+            'North': '^',
+            'East': '>',
+            'South': 'v',
+            'West': '<'
+        }
+        
+        grid_lines = []
+        grid_lines.append("Grid Legend: D=Drone, T=Tree, Z=Zebra, E=Elephant, O=Oryx, .=Empty")
+        grid_lines.append("   " + "".join([f"{i:2}" for i in range(min(10, GRID_SIZE))]))  # Column numbers
+        
+        for row in range(GRID_SIZE):
+            line = f"{row:2} "  # Row number
+            for col in range(GRID_SIZE):
+                # Check if drone is at this position
+                if [row, col] == self.drone_pos:
+                    line += direction_symbols[self.drone_facing] + " "
+                # Check if this location was scared (animal ran away)
+                elif (row, col) in self.scared_animals:
+                    line += "! "  # Scared animal marker
+                # Check if this location was photographed
+                elif (row, col) in self.photographed_locations:
+                    line += "* "  # Photo taken marker
+                else:
+                    # Show grid element
+                    element = self.grid[row, col]
+                    line += symbols.get(element, '?') + " "
+            grid_lines.append(line)
+        
+        return "\n".join(grid_lines)
+    
     def reset_game(self):
         """Reset the game to initial state"""
         self.__init__()
         return "Game reset! Ready to start again."
     
-    def visualize(self, figsize=(12, 10)):
+    def visualize(self, figsize=(8, 6)):
         """Visualize the current game state"""
         fig, ax = plt.subplots(figsize=figsize)
         
@@ -378,6 +462,54 @@ class DroneSafariGame:
         # Add drone position and facing direction
         drone_row, drone_col = self.drone_pos
         
+        # Draw movement trail (dashed blue lines from previous positions)
+        for prev_pos, curr_pos in self.movement_trail:
+            prev_row, prev_col = prev_pos
+            curr_row, curr_col = curr_pos
+            ax.plot([prev_col, curr_col], [prev_row, curr_row], 
+                   'b--', linewidth=2, alpha=0.7, zorder=9, label='Movement Trail' if len(self.movement_trail) == 1 else "")
+        
+        # Draw rotation indicators (small curved arrows at rotation points)
+        for pos, prev_facing, new_facing in self.rotation_trail:
+            rot_row, rot_col = pos
+            # Draw a small circular arc to indicate rotation
+            prev_angle = list(DIRECTIONS.keys()).index(prev_facing) * 90
+            new_angle = list(DIRECTIONS.keys()).index(new_facing) * 90
+            
+            # Calculate angle difference for rotation direction
+            angle_diff = (new_angle - prev_angle) % 360
+            if angle_diff > 180:
+                angle_diff -= 360
+            
+            # Draw rotation indicator as a small curved arrow
+            from matplotlib.patches import FancyArrowPatch
+            from matplotlib.patches import ConnectionPatch
+            
+            # Small circle to show rotation point
+            circle = patches.Circle((rot_col, rot_row), 0.1, facecolor='lightblue', 
+                                  edgecolor='blue', linewidth=1, zorder=8, alpha=0.8)
+            ax.add_patch(circle)
+            
+            # Add rotation arrow (small curved line)
+            if angle_diff > 0:  # Clockwise (right turn)
+                arc_style = "arc3,rad=0.3"
+                arrow_color = 'blue'
+            else:  # Counterclockwise (left turn)
+                arc_style = "arc3,rad=-0.3"
+                arrow_color = 'blue'
+            
+            # Draw small rotation arrow
+            start_point = (rot_col - 0.15, rot_row - 0.15)
+            end_point = (rot_col + 0.15, rot_row - 0.15)
+            arrow = FancyArrowPatch(start_point, end_point,
+                                  connectionstyle=arc_style,
+                                  arrowstyle='->', 
+                                  color=arrow_color, 
+                                  linewidth=1.5,
+                                  zorder=9,
+                                  alpha=0.8)
+            ax.add_patch(arrow)
+        
         # Check if drone position is outside grid bounds (for boundary crashes)
         drone_visible = (0 <= drone_row < GRID_SIZE and 0 <= drone_col < GRID_SIZE)
         
@@ -414,16 +546,16 @@ class DroneSafariGame:
                 # Try to use drone icon, fallback to blue circle with arrow
                 if drone_icon is not None:
                     add_icon_to_plot(ax, drone_col, drone_row, drone_icon, zorder=10)
-                    # Add facing direction indicator (small arrow overlay)
+                    # Add facing direction indicator (blue arrow overlay)
                     dr, dc = DIRECTIONS[self.drone_facing]
                     ax.arrow(drone_col, drone_row, dc*0.7, dr*0.7, 
-                            head_width=0.15, head_length=0.12, fc='red', ec='red', zorder=11, linewidth=2)
+                            head_width=0.15, head_length=0.12, fc='blue', ec='blue', zorder=11, linewidth=2)
                 else:
                     # Fallback: Draw normal drone in blue
                     circle = patches.Circle((drone_col, drone_row), 0.3, color='blue', zorder=10)
                     ax.add_patch(circle)
                     
-                    # Draw facing direction arrow (only if not crashed)
+                    # Draw facing direction arrow (blue)
                     dr, dc = DIRECTIONS[self.drone_facing]
                     ax.arrow(drone_col, drone_row, dc*0.7, dr*0.7, 
                             head_width=0.15, head_length=0.12, fc='blue', ec='blue', zorder=11, linewidth=2)
@@ -434,7 +566,7 @@ class DroneSafariGame:
             ax.plot([photo_col-0.3, photo_col+0.3], [photo_row, photo_row], 'b-', linewidth=3, zorder=12)
             ax.plot([photo_col, photo_col], [photo_row-0.3, photo_row+0.3], 'b-', linewidth=3, zorder=12)
             # Add picture number in white circle
-            circle = patches.Circle((photo_col, photo_row), 0.15, color='white', zorder=13, edgecolor='blue', linewidth=2)
+            circle = patches.Circle((photo_col, photo_row), 0.15, facecolor='white', zorder=13, edgecolor='blue', linewidth=2)
             ax.add_patch(circle)
             ax.text(photo_col, photo_row, str(picture_num), ha='center', va='center', 
                    fontsize=8, fontweight='bold', color='blue', zorder=14)
@@ -451,9 +583,9 @@ class DroneSafariGame:
         
         # Labels and title with enhanced styling
         ax.set_xlabel('Column →', fontsize=12, fontweight='bold')
-        ax.set_ylabel('← Row', fontsize=12, fontweight='bold')
-        
-        # Dynamic title with matplotlib-compatible formatting
+        ax.set_ylabel('Row →', fontsize=12, fontweight='bold')
+
+        # Dynamic title with comprehensive status information
         if self.game_over:
             if self.game_won:
                 title = 'MISSION ACCOMPLISHED!\nALL ANIMALS PHOTOGRAPHED!'
@@ -474,154 +606,28 @@ class DroneSafariGame:
                     title = 'MISSION FAILED!\nDRONE CRASHED!'
                 title_color = 'darkred'
         else:
-            title = f'DRONE SAFARI MISSION\nPosition: {self.drone_pos} | Facing: {self.drone_facing}'
+            # Create comprehensive status for ongoing mission
+            animals_found = sum(self.animals_photographed.values())
+            animals_list = []
+            for animal, found in self.animals_photographed.items():
+                if found:
+                    animals_list.append(f"{animal.upper()}✓")
+                else:
+                    animals_list.append(f"{animal.upper()}✗")
+            
+            title = f'DRONE SAFARI MISSION\n'
+            title += f'Position: {self.drone_pos} | Facing: {self.drone_facing}\n'
+            title += f'Pictures: {self.pictures_remaining}/5 | Animals: {animals_found}/3 ({", ".join(animals_list)})'
             title_color = 'darkblue'
         
         ax.set_title(title, fontsize=14, fontweight='bold', color=title_color)
-        
-        # Add enhanced status text with matplotlib-compatible formatting
-        status_text = "MISSION STATUS\n" + "="*30 + "\n\n"
-        
-        # Pictures remaining
-        status_text += f"PICTURES: {self.pictures_remaining}/5 remaining ({self.pictures_taken} used)\n"
-        
-        # Movement statistics
-        status_text += f"MOVES: {self.total_moves} | TURNS: {self.total_turns}\n\n"
-        
-        # Animals with clear text presentation
-        status_text += "PHOTO COLLECTION:\n"
-        animals_info = [
-            ('zebra', 'Z', 'ZEBRA'),
-            ('elephant', 'E', 'ELEPHANT'), 
-            ('oryx', 'O', 'ORYX')
-        ]
-        
-        for animal, symbol, name in animals_info:
-            photographed = self.animals_photographed[animal]
-            if photographed:
-                status_text += f"[{symbol}] {name}: CAPTURED!\n"
-            else:
-                status_text += f"[{symbol}] {name}: MISSING\n"
-        
-        # Progress visualization with text
-        total_animals = len(self.animals_photographed)
-        captured = sum(self.animals_photographed.values())
-        progress = "█" * captured + "░" * (total_animals - captured)
-        status_text += f"\nMission Progress:\n[{progress}] {captured}/{total_animals} animals\n\n"
-        
-        # Latest action with clear formatting
-        message = self.message
-        if len(message) > 120:  # Increased from 80 to allow longer messages
-            message = message[:117] + "..."
-        
-        status_text += "="*30 + "\n"
-        if self.game_over:
-            if self.game_won:
-                status_text += "MISSION COMPLETE!\n"
-            else:
-                status_text += "MISSION FAILED!\n"
-        else:
-            status_text += "LATEST ACTION:\n"
-        status_text += f"> {message}"
-        
-        # Enhanced text box with dynamic colors and better positioning
-        box_color = 'lightblue' if self.game_won else ('lightgreen' if not self.game_over else 'lightcoral')
-        plt.figtext(0.02, 0.01, status_text, fontsize=10, verticalalignment='bottom',
-                    fontweight='bold', wrap=True, 
-                    bbox=dict(boxstyle="round,pad=0.6", facecolor=box_color, alpha=0.9,
-                             edgecolor='black', linewidth=2))
         
         # Set axis ticks to show numbers every 2 units (0, 2, 4, 6, ...)
         ax.set_xticks(range(0, GRID_SIZE, 2))
         ax.set_yticks(range(0, GRID_SIZE, 2))
         
-        # Adjust layout to leave more space at bottom for text
-        plt.subplots_adjust(bottom=0.3)
-        plt.show()
-        
         return fig
-        
-    def print_instructions(self):
-        """Print game instructions"""
-        instructions = """
-DRONE SAFARI GAME INSTRUCTIONS
-
-OBJECTIVE: Photograph all three animals (zebra, elephant, oryx) with only 5 pictures!
-
-AVAILABLE TOOLS:
-1. move(direction) - Move the drone one cell
-   Directions: 'f'=forward, 'l'=left, 'r'=right, 'b'=back
-
-2. turn(direction) - Change facing direction
-   Directions: 'left' or 'right'
-
-3. take_picture() - Photograph an animal (LIMITED TO 5 PICTURES TOTAL!)
-   Only works when exactly 2 cells away from an animal in the facing direction
-   Wasted pictures count against your limit!
-
-INTERACTIVE CONTROLS (when running the script):
-• Arrow Keys: Move drone (↑=forward, ↓=back, ←=left, →=right)
-• A/D Keys: Turn right/left
-• Enter: Take picture
-• R: Reset game
-
-RULES:
-• Don't crash into trees (brown squares)
-• Don't get too close to animals (adjacent cells)
-• Don't fly outside the grid boundaries
-• Maintain safe distance from animals to avoid scaring them
-• You only have 5 pictures - use them wisely!
-• Taking pictures of empty space, trees, or already-photographed animals wastes pictures!
-• The game tracks your total moves and turns for performance evaluation
-
-GRID LEGEND:
-• White = Empty space
-• Brown = Trees (obstacles)
-• Black = Zebra
-• Gray = Elephant  
-• Orange = Oryx
-• Blue circle with arrow = Your drone (arrow shows facing direction)
-• Red circle with ! = Crashed drone
-• Scared animal icon = Animal that was scared away (mission failed)
-• Blue cross with number = Photo marker (shows where pictures were taken)
-        """
-        print(instructions)
-
-
-def process_natural_language_command(command, game):
-    """
-    Process a natural language command and execute the appropriate game action.
     
-    This is where you would implement the LLM's natural language understanding
-    to map user intentions to specific tool calls.
-    
-    Args:
-        command (str): Natural language command from the user
-        game (DroneSafariGame): The game instance
-    
-    Returns:
-        str: Result of the executed command
-    """
-    command = command.lower().strip()
-    
-    # Simple keyword-based mapping (you can make this more sophisticated with LLM)
-    if 'forward' in command or 'ahead' in command:
-        return game.move('f')
-    elif 'back' in command or 'backward' in command:
-        return game.move('b')
-    elif 'left' in command and 'turn' in command:
-        return game.turn('left')
-    elif 'right' in command and 'turn' in command:
-        return game.turn('right')
-    elif 'left' in command:
-        return game.move('l')
-    elif 'right' in command:
-        return game.move('r')
-    elif 'picture' in command or 'photo' in command or 'take' in command:
-        return game.take_picture()
-    else:
-        return f"I don't understand the command: '{command}'. Try commands like 'move forward', 'turn left', or 'take picture'."
-
 
 class InteractiveDroneSafariGame:
     """Interactive version of the drone safari game with keyboard controls"""
@@ -668,10 +674,10 @@ class InteractiveDroneSafariGame:
         
         # A and D keys for turning
         elif event.key == 'a':
-            result = self.game.turn('right')
-        elif event.key == 'd':
             result = self.game.turn('left')
-        
+        elif event.key == 'd':
+            result = self.game.turn('right')
+
         # Enter key for taking pictures
         elif event.key == 'enter':
             result = self.game.take_picture()
@@ -845,7 +851,7 @@ class InteractiveDroneSafariGame:
                     # Add facing direction indicator (small arrow overlay)
                     dr, dc = DIRECTIONS[self.game.drone_facing]
                     self.ax.arrow(drone_col, drone_row, dc*0.7, dr*0.7, 
-                                head_width=0.12, head_length=0.1, fc='red', ec='red', zorder=11, linewidth=2)
+                                head_width=0.12, head_length=0.1, fc='blue', ec='blue', zorder=11, linewidth=2)
                 else:
                     # Fallback: Draw normal drone in blue
                     circle = patches.Circle((drone_col, drone_row), 0.3, color='blue', zorder=10)
@@ -862,7 +868,7 @@ class InteractiveDroneSafariGame:
             self.ax.plot([photo_col-0.3, photo_col+0.3], [photo_row, photo_row], 'b-', linewidth=3, zorder=12)
             self.ax.plot([photo_col, photo_col], [photo_row-0.3, photo_row+0.3], 'b-', linewidth=3, zorder=12)
             # Add picture number in white circle
-            circle = patches.Circle((photo_col, photo_row), 0.15, color='white', zorder=13, edgecolor='blue', linewidth=2)
+            circle = patches.Circle((photo_col, photo_row), 0.15, facecolor='white', zorder=13, edgecolor='blue', linewidth=2)
             self.ax.add_patch(circle)
             self.ax.text(photo_col, photo_row, str(picture_num), ha='center', va='center', 
                         fontsize=8, fontweight='bold', color='blue', zorder=14)
@@ -1034,6 +1040,152 @@ class InteractiveDroneSafariGame:
         
         # Show the plot and keep it interactive
         plt.show()
+
+
+class InteractiveNotebookAgent:
+    """Interactive widget for Jupyter notebooks to test command agents"""
+    
+    def __init__(self, game, agent):
+        """Initialize with a game instance and an agent"""
+        self.game = game
+        self.agent = agent
+        self.history = []
+        
+        try:
+            from IPython.display import display, clear_output
+            import ipywidgets as widgets
+            self.display = display
+            self.clear_output = clear_output
+            self.widgets = widgets
+            self.ipython_available = True
+        except ImportError:
+            print("Warning: IPython widgets not available. Please install jupyter widgets:")
+            print("pip install ipywidgets")
+            self.ipython_available = False
+    
+    def create_interface(self):
+        """Create the interactive interface"""
+        if not self.ipython_available:
+            print("Interactive interface not available. Please install ipywidgets.")
+            return
+        
+        # Create widgets
+        self.command_input = self.widgets.Text(
+            placeholder="Enter command (e.g., 'move forward', 'turn left', 'take picture')",
+            description="Command:",
+            style={'description_width': 'initial'},
+            layout=self.widgets.Layout(width='600px')
+        )
+        
+        self.send_button = self.widgets.Button(
+            description="Send Command",
+            button_style='primary',
+            layout=self.widgets.Layout(width='150px')
+        )
+        
+        self.output_area = self.widgets.Output()
+        
+        # Set up event handlers
+        self.command_input.on_submit(self._on_command_submit)
+        self.send_button.on_click(self._on_send_click)
+        
+        # Create layout
+        input_box = self.widgets.HBox([self.command_input, self.send_button])
+        interface = self.widgets.VBox([
+            self.widgets.HTML("<h3>🚁 Drone Safari Command Interface</h3>"),
+            input_box,
+            self.output_area
+        ])
+        
+        # Display initial state
+        with self.output_area:
+            self._show_initial_state()
+        
+        self.display(interface)
+        return interface
+    
+    def _on_command_submit(self, change):
+        """Handle Enter key press in command input"""
+        self._process_command()
+    
+    def _on_send_click(self, button):
+        """Handle send button click"""
+        self._process_command()
+    
+    def _process_command(self):
+        """Process the command and update display"""
+        command = self.command_input.value.strip()
+        if not command:
+            return
+        
+        # Clear output and show processing
+        with self.output_area:
+            self.clear_output(wait=True)
+            print(f"🗣️ Human: '{command}'")
+            print("🤖 Processing...")
+        
+        try:
+            # Get agent response with detailed output
+            response = self.agent.chat(command)
+            
+            # Get game status
+            status = self.game.get_status()
+            
+            # Store in history
+            self.history.append({
+                'command': command,
+                'response': response,
+                'status': status
+            })
+            
+            # Update display
+            with self.output_area:
+                self.clear_output(wait=True)
+                self._show_command_result(command, response, status)
+                
+        except Exception as e:
+            with self.output_area:
+                self.clear_output(wait=True)
+                print(f"❌ Error processing command: {e}")
+                print("Please try again with a different command.")
+        
+        # Clear input for next command
+        self.command_input.value = ""
+    
+    def _show_initial_state(self):
+        """Show the initial game state"""
+        print("🗺️ Initial Safari Map:")
+        print("="*50)
+        status = self.game.get_status()
+        print(f"📍 Position: {status['position']} | 🧭 Facing: {status['facing']}")
+        print(f"📷 Pictures: {status['pictures_remaining']} | 🎯 Mission: Find zebra, elephant, oryx")
+        print()
+        self.game.visualize()
+        print("\n💡 Enter commands like: 'move forward', 'turn left', 'take picture'")
+    
+    def _show_command_result(self, command, response, status):
+        """Show the result of a command"""
+        print(f"🗣️ Human: '{command}'")
+        print("="*60)
+        print("🤖 Agent Response:")
+        print(response)
+        print("\n" + "="*60)
+        print("🎮 Game Status:")
+        print(f"📍 Position: {status['position']} | 🧭 Facing: {status['facing']}")
+        print(f"📷 Pictures: {status['pictures_remaining']} | 🎯 Mission: Find zebra, elephant, oryx")
+        
+        if status.get('game_over'):
+            print("🎯 GAME OVER!")
+            if status.get('mission_complete'):
+                print("🎉 Mission completed successfully!")
+            else:
+                print("💥 Mission failed - try again!")
+        
+        print("\n🗺️ Updated Safari Map:")
+        self.game.visualize()
+        
+        if not status.get('game_over'):
+            print("\n💡 Ready for next command!")
 
 
 def main():
