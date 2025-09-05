@@ -51,7 +51,7 @@ Navigate a drone in a 12x12 safari park to photograph 3 animal species (🦓🐘
 **API Controls (for agents):**
 
 ```python
-game.move('f')        # forward/back/left/right  
+game.move('forward')    # front/back/left/right  
 game.turn('left')     # left/right
 game.take_picture()   # capture photo
 ```

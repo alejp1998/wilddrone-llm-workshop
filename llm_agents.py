@@ -115,14 +115,14 @@ class LLMAgent:
         debug_output = []
         
         if debug:
-            debug_output.append(f"- User Question: {user_message}")
+            debug_output.append(f"- User said: {user_message}")
             debug_output.append(f"- Available tools: {[tool.__name__ for tool in self.tools]}")
         
         # Clear conversation history if requested
         if clear_memory:
             self.conversation_history = []
-            if debug:
-                debug_output.append("- Conversation memory cleared")
+            # if debug:
+            #     debug_output.append("- Conversation memory cleared")
         
         # Add user message to history
         self.conversation_history.append({"role": "user", "content": user_message})
@@ -139,7 +139,7 @@ class LLMAgent:
                 model=self.model,
                 messages=messages,
                 max_tokens=4000,
-                temperature=0.1,
+                temperature=0.0,
                 tools=tool_schemas if tool_schemas else None
             )
             
