@@ -145,10 +145,11 @@ class LLMAgent:
             
             # Check if response has choices
             if not response.choices or len(response.choices) == 0:
-                error_msg = "Error: No response choices returned from LLM"
+                empty_response_msg = "The LLM provided an empty answer"
                 if debug:
-                    debug_output.append(error_msg)
-                return error_msg, debug_output
+                    debug_output.append(f"- {empty_response_msg}")
+                self.conversation_history.append({"role": "assistant", "content": empty_response_msg})
+                return empty_response_msg, debug_output
             
             message = response.choices[0].message
             response_text = message.content or ""
@@ -191,15 +192,16 @@ class LLMAgent:
                     model=self.model,
                     messages=[{"role": "system", "content": self.system_prompt}] + self.conversation_history,
                     max_tokens=4000,
-                    temperature=0.1
+                    temperature=0.0
                 )
                 
                 # Check if final response has choices
                 if not final_response.choices or len(final_response.choices) == 0:
-                    error_msg = "Error: No response choices returned from final LLM call"
+                    empty_response_msg = "The LLM provided an empty answer"
                     if debug:
-                        debug_output.append(error_msg)
-                    return error_msg, debug_output
+                        debug_output.append(f"- {empty_response_msg}")
+                    self.conversation_history.append({"role": "assistant", "content": empty_response_msg})
+                    return empty_response_msg, debug_output
                 
                 final_response_text = final_response.choices[0].message.content
                 
