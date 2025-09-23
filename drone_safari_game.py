@@ -1,3 +1,64 @@
+"""
+DRONE SAFARI GAME
+================
+
+PURPOSE:
+This is an interactive drone navigation game where players must photograph wildlife 
+while avoiding obstacles and managing limited resources.
+
+OBJECTIVE:
+Navigate a drone through a 12x12 grid to photograph all three animals (Zebra, Elephant, Oryx)
+without crashing or scaring them away.
+
+GAME RULES:
+- Start at position (6,6) facing North
+- You have only 5 pictures total (including wasted shots)
+- Must stay exactly 2 cells away from animals when photographing
+- Getting too close (adjacent) to animals scares them away = GAME OVER
+- Crashing into trees, animals, or grid boundaries = GAME OVER
+- Trees block your camera view when taking pictures
+
+CONTROLS:
+- Arrow Keys: Move drone (↑=forward, ↓=backward, ←=left, →=right)
+- A/D Keys: Turn left/right (changes facing direction)
+- Enter: Take picture (limited to 5 total!)
+- R: Reset game
+- Q/ESC: Quit game
+
+GAME MODES:
+1. Interactive Mode: Run main() for keyboard-controlled gameplay with live visualization
+2. Programmatic Mode: Create DroneSafariGame() instance and call methods directly
+
+KEY METHODS:
+- move(direction, sensors=False): Move drone ('forward', 'backward', 'left', 'right')
+- turn(direction, sensors=False): Turn drone ('left', 'right')  
+- take_picture(sensors=False): Attempt to photograph (costs 1 of 5 pictures)
+- get_status(): Get current game state
+- visualize(): Display current game state
+- reset_game(): Start over
+
+SENSOR FUNCTIONALITY:
+- Set sensors=True in move(), turn(), or take_picture() methods for environment scanning
+- Sensors detect objects (trees, animals, boundaries) within 2 cells of drone position
+- Provides directional information (north, south, east, west, etc.) and distances
+- Helps with navigation and situational awareness during programmatic control
+
+STRATEGY TIPS:
+- Plan your route to minimize wasted pictures
+- Use turns strategically to face animals from 2 cells away
+- Watch out for trees blocking your camera view
+- Remember: movement is relative to drone's facing direction
+
+FAILURE CONDITIONS:
+- Boundary crash: Flying outside the 12x12 grid
+- Tree crash: Hitting a tree
+- Scared animal: Getting adjacent to an animal
+- Out of pictures: Using all 5 pictures without photographing all animals
+
+WIN CONDITION:
+Successfully photograph all three animals (Zebra, Elephant, Oryx) within 5 pictures
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -118,10 +179,91 @@ class DroneSafariGame:
             return list(DIRECTIONS.keys())[(facing_index - 1) % 4]
         
         return (0, 0)  # No movement
+    
+    def _get_sensor_summary(self):
+        """Scan surrounding cells up to 2 cells away and return a summary of detected objects"""
+        detections = []
+        current_row, current_col = self.drone_pos
+        
+        # Object type names
+        object_names = {
+            TREE: "tree",
+            ZEBRA: "zebra",
+            ELEPHANT: "elephant", 
+            ORYX: "oryx"
+        }
+        
+        def format_direction(dr, dc):
+            """Format direction as precise coordinates like '1 North 2 East'"""
+            parts = []
+            if dr < 0:  # North (negative row is north)
+                parts.append(f"{abs(dr)} North")
+            elif dr > 0:  # South (positive row is south)
+                parts.append(f"{dr} South")
+            
+            if dc > 0:  # East (positive column is east)
+                parts.append(f"{dc} East")
+            elif dc < 0:  # West (negative column is west)
+                parts.append(f"{abs(dc)} West")
+            
+            return " ".join(parts) if parts else "at current position"
+        
+        # Scan in a 5x5 grid centered on drone (2 cells in each direction)
+        for distance in range(1, 3):  # 1 and 2 cells away
+            for dr in range(-distance, distance + 1):
+                for dc in range(-distance, distance + 1):
+                    # Skip the center (drone position) and cells not exactly at current distance
+                    if (dr == 0 and dc == 0) or (abs(dr) < distance and abs(dc) < distance):
+                        continue
+                    
+                    scan_row = current_row + dr
+                    scan_col = current_col + dc
+                    
+                    # Check if position is within grid bounds
+                    if not self._is_valid_position(scan_row, scan_col):
+                        # Check which boundary is being approached
+                        boundary_desc = []
+                        if scan_row < 0:
+                            boundary_desc.append("north boundary")
+                        elif scan_row >= GRID_SIZE:
+                            boundary_desc.append("south boundary")
+                        if scan_col < 0:
+                            boundary_desc.append("west boundary")
+                        elif scan_col >= GRID_SIZE:
+                            boundary_desc.append("east boundary")
+                        
+                        if boundary_desc:
+                            direction_str = format_direction(dr, dc)
+                            detections.append(f"{' and '.join(boundary_desc)} at {direction_str}")
+                        continue
+                    
+                    # Check what's at this position
+                    cell_value = self.grid[scan_row, scan_col]
+                    if cell_value in object_names:
+                        direction_str = format_direction(dr, dc)
+                        detections.append(f"{object_names[cell_value]} at {direction_str}")
+                    
+                    # Check for scared animals at this position
+                    if (scan_row, scan_col) in self.scared_animals:
+                        direction_str = format_direction(dr, dc)
+                        detections.append(f"scared animal location at {direction_str}")
+        
+        if not detections:
+            return "Sensors summary: Nothing of interest detected within 2 cells."
+        else:
+            return "Sensors summary: " + "; ".join(detections) + "."
 
     # Tool methods
-    def move(self, move_type):
-        """Move the drone with the specified move_type"""
+    def move(self, move_type, sensors=False):
+        """Move the drone with the specified move_type
+        
+        Args:
+            move_type (str): Direction to move ('forward', 'backward', 'left', 'right')
+            sensors (bool): If True, include sensor scan of surrounding area up to 2 cells away
+            
+        Returns:
+            str: Result message, optionally including sensor summary if sensors=True
+        """
         if self.game_over:
             return "Game is over! Reset to play again."
         
@@ -144,7 +286,10 @@ class DroneSafariGame:
             self.game_over = True
             self.failure_reason = "boundary_crash"
             self.message = "Drone crashed! Flew outside the grid boundaries."
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Check for collision with tree
         if self.grid[new_row, new_col] == TREE:
@@ -152,7 +297,10 @@ class DroneSafariGame:
             self.game_over = True
             self.failure_reason = "tree_crash"
             self.message = "Drone crashed into a tree!"
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Check for collision with animal
         if self.grid[new_row, new_col] in [ZEBRA, ELEPHANT, ORYX]:
@@ -160,7 +308,10 @@ class DroneSafariGame:
             self.game_over = True
             self.failure_reason = "animal_crash"
             self.message = "Drone crashed into an animal!"
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Check if too close to animal
         if self._is_adjacent_to_animal(new_row, new_col):
@@ -181,7 +332,10 @@ class DroneSafariGame:
             self.game_over = True
             self.failure_reason = "scared_animal"
             self.message = "Drone got too close to an animal and scared it away!"
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Move is valid
         # Add movement trail immediately (before moving to new position)
@@ -191,10 +345,21 @@ class DroneSafariGame:
         self.drone_pos = [new_row, new_col]
         self.total_moves += 1  # Increment move counter
         self.message = f"Moved {move_type} to position ({new_row}, {new_col}), facing {self.drone_facing}"
-        return self.message
+        result = self.message
+        if sensors:
+            result += "\n" + self._get_sensor_summary()
+        return result
 
-    def turn(self, turn_direction):
-        """Turn the drone left or right"""
+    def turn(self, turn_direction, sensors=False):
+        """Turn the drone left or right
+        
+        Args:
+            turn_direction (str): Direction to turn ('left' or 'right')
+            sensors (bool): If True, include sensor scan of surrounding area up to 2 cells away
+            
+        Returns:
+            str: Result message, optionally including sensor summary if sensors=True
+        """
         if self.game_over:
             return "Game is over! Reset to play again."
 
@@ -218,10 +383,20 @@ class DroneSafariGame:
         self.rotation_trail.append((self.drone_pos[:], old_facing, self.drone_facing))
         self.total_turns += 1  # Increment turn counter
         self.message = f"Turned {turn_direction}, now facing {self.drone_facing}"
-        return self.message
+        result = self.message
+        if sensors:
+            result += "\n" + self._get_sensor_summary()
+        return result
     
-    def take_picture(self):
-        """Attempt to take a picture of an animal"""
+    def take_picture(self, sensors=False):
+        """Attempt to take a picture of an animal
+        
+        Args:
+            sensors (bool): If True, include sensor scan of surrounding area up to 2 cells away
+            
+        Returns:
+            str: Result message, optionally including sensor summary if sensors=True
+        """
         if self.game_over:
             return "Game is over! Reset to play again."
         
@@ -229,7 +404,10 @@ class DroneSafariGame:
         if self.pictures_remaining <= 0:
             self.message = "No pictures remaining! You've used all 5 pictures."
             self.game_over = True
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Use one picture
         self.pictures_remaining -= 1
@@ -253,7 +431,10 @@ class DroneSafariGame:
             if self.pictures_remaining == 0:
                 self.game_over = True
                 self.message += " Game Over - No pictures left!"
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Check if there's a tree blocking the view
         if (self._is_valid_position(blocking_row, blocking_col) and 
@@ -265,7 +446,10 @@ class DroneSafariGame:
                 self.game_over = True
                 self.failure_reason = "out_of_pictures"
                 self.message += " Game Over - No pictures left and mission incomplete!"
-            return self.message
+            result = self.message
+            if sensors:
+                result += "\n" + self._get_sensor_summary()
+            return result
         
         # Record the photographed location for visualization (normal case - target location)
         if self._is_valid_position(target_row, target_col):
@@ -310,7 +494,10 @@ class DroneSafariGame:
             self.failure_reason = "out_of_pictures"
             self.message += " Game Over - No pictures left and mission incomplete!"
         
-        return self.message
+        result = self.message
+        if sensors:
+            result += "\n" + self._get_sensor_summary()
+        return result
 
     def get_status(self):
         """Get current game status"""
