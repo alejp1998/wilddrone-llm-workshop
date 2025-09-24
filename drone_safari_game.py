@@ -40,7 +40,8 @@ KEY METHODS:
 SENSOR FUNCTIONALITY:
 - Set sensors=True in move(), turn(), or take_picture() methods for environment scanning
 - Sensors detect objects (trees, animals, boundaries) within 2 cells of drone position
-- Provides directional information (north, south, east, west, etc.) and distances
+- Provides directional information in format (XN/S, YE/W) - e.g., (2N, 1W), (0N, 2E)
+- North=increasing row, South=decreasing row, East=increasing column, West=decreasing column
 - Helps with navigation and situational awareness during programmatic control
 
 STRATEGY TIPS:
@@ -194,19 +195,31 @@ class DroneSafariGame:
         }
         
         def format_direction(dr, dc):
-            """Format direction as precise coordinates like '1 North 2 East'"""
-            parts = []
-            if dr < 0:  # North (negative row is north)
-                parts.append(f"{abs(dr)} North")
-            elif dr > 0:  # South (positive row is south)
-                parts.append(f"{dr} South")
+            """Format direction as precise coordinates like '(2N, 1W)'"""
+            # In our coordinate system (following DIRECTIONS mapping):
+            # North = increasing row (visually moving down)
+            # South = decreasing row (visually moving up)  
+            # East = increasing column (visually moving right)
+            # West = decreasing column (visually moving left)
             
-            if dc > 0:  # East (positive column is east)
-                parts.append(f"{dc} East")
-            elif dc < 0:  # West (negative column is west)
-                parts.append(f"{abs(dc)} West")
+            north_south = ""
+            east_west = ""
             
-            return " ".join(parts) if parts else "at current position"
+            if dr > 0:  # Increasing row = North direction
+                north_south = f"{dr}N"
+            elif dr < 0:  # Decreasing row = South direction
+                north_south = f"{abs(dr)}S"
+            else:
+                north_south = "0N"
+            
+            if dc > 0:  # Increasing column = East direction
+                east_west = f"{dc}E"
+            elif dc < 0:  # Decreasing column = West direction
+                east_west = f"{abs(dc)}W"
+            else:
+                east_west = "0E"
+            
+            return f"({north_south}, {east_west})"
         
         # Scan in a 5x5 grid centered on drone (2 cells in each direction)
         for distance in range(1, 3):  # 1 and 2 cells away
@@ -539,7 +552,8 @@ class DroneSafariGame:
         grid_lines.append("Grid Legend: D=Drone, T=Tree, Z=Zebra, E=Elephant, O=Oryx, .=Empty")
         grid_lines.append("   " + "".join([f"{i:2}" for i in range(min(10, GRID_SIZE))]))  # Column numbers
         
-        for row in range(GRID_SIZE):
+        # Iterate through rows in reverse order so row 0 appears at the bottom
+        for row in range(GRID_SIZE - 1, -1, -1):
             line = f"{row:2} "  # Row number
             for col in range(GRID_SIZE):
                 # Check if drone is at this position
