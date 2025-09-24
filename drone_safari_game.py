@@ -29,6 +29,11 @@ GAME MODES:
 1. Interactive Mode: Run main() for keyboard-controlled gameplay with live visualization
 2. Programmatic Mode: Create DroneSafariGame() instance and call methods directly
 
+DIFFICULTY LEVELS:
+- Easy: Fewest trees, safest navigation
+- Medium: Moderate number of trees, balanced challenge [DEFAULT]
+- Hard: Most trees, maximum challenge
+
 KEY METHODS:
 - move(direction, sensors=False): Move drone ('forward', 'backward', 'left', 'right')
 - turn(direction, sensors=False): Turn drone ('left', 'right')  
@@ -38,8 +43,9 @@ KEY METHODS:
 - reset_game(): Start over
 
 SENSOR FUNCTIONALITY:
-- Set sensors=True in move(), turn(), or take_picture() methods for environment scanning
-- Sensors detect objects (trees, animals, boundaries) within 2 cells of drone position
+- Set sensors=True in move(), turn(), or take_picture() methods for environment scanning  
+- Animal GPS: Always shows all animal positions regardless of distance
+- Proximity sensors: Detect trees and boundaries within 2 cells of drone position
 - Provides directional information in format (XN/S, YE/W) - e.g., (2N, 1W), (0N, 2E)
 - North=increasing row, South=decreasing row, East=increasing column, West=decreasing column
 - Helps with navigation and situational awareness during programmatic control
@@ -86,6 +92,54 @@ DIRECTIONS = {
 
 MOVE_TYPES = ['forward', 'left', 'right', 'backward']
 
+# Map definitions (embedded in script)
+MAP_DEFINITIONS = {
+    'easy': """Grid Legend: T=Tree, Z=Zebra, E=Elephant, O=Oryx, .=Empty
+   0 1 2 3 4 5 6 7 8 9
+11 . . . . . . . . . . . . 
+10 . . . . . . . . . . . . 
+ 9 . . . . . . . . . E . . 
+ 8 . . . . . . . . . . . . 
+ 7 . . . . . . . . . . . . 
+ 6 . . . . . . . . . . . . 
+ 5 . . . . . . . . . . . . 
+ 4 . . . . . . . . T . . . 
+ 3 . . . Z . . . . . . . . 
+ 2 . . . . . . . . . O . . 
+ 1 . . . . . . . . . . . . 
+ 0 . . . . . . . . . . . .""",
+    
+    'medium': """Grid Legend: T=Tree, Z=Zebra, E=Elephant, O=Oryx, .=Empty
+   0 1 2 3 4 5 6 7 8 9
+11 . . . . . . T . . . . . 
+10 . . . . . . . . . . . . 
+ 9 . . . . . T . . . E . . 
+ 8 . . . . . . . . . . . . 
+ 7 . . . . . . . . . . . T 
+ 6 . . . . . . . . . . . . 
+ 5 . T . . . . . . . . . . 
+ 4 . . . . . . . . T . . . 
+ 3 . . . Z . . T . . . . . 
+ 2 . . . . . . . . . O . . 
+ 1 . . . . . . . . . . . . 
+ 0 . . . . . . . . . . . .""",
+    
+    'hard': """Grid Legend: T=Tree, Z=Zebra, E=Elephant, O=Oryx, .=Empty
+   0 1 2 3 4 5 6 7 8 9
+11 . . T . . . T . . . . . 
+10 . . . . T . . . . . . . 
+ 9 . . . . . T . . T E . . 
+ 8 . . . . . . . . . T . . 
+ 7 . . . . . . . . . . . T 
+ 6 . . . . . . . . . . . . 
+ 5 . T . T . . . . . . . . 
+ 4 . . . . . . . . T . . . 
+ 3 . . . Z T . T . . . . . 
+ 2 . . . T . . . . . O . . 
+ 1 . . . . . . . . . . T . 
+ 0 . . . . . . . . . . . ."""
+}
+
 def load_icon(filename, zoom=0.1):
     """Load an icon image and return it as an OffsetImage"""
     try:
@@ -105,7 +159,8 @@ def add_icon_to_plot(ax, x, y, icon, zorder=1):
 
 
 class DroneSafariGame:
-    def __init__(self):
+    def __init__(self, difficulty="medium"):
+        self.difficulty = difficulty
         self.grid = np.zeros((GRID_SIZE, GRID_SIZE))
         self.drone_pos = [6, 6]  # Start in middle of grid
         self.drone_facing = 'North'  # Can be North, East, South, West
@@ -128,27 +183,46 @@ class DroneSafariGame:
         self._setup_grid()
         
     def _setup_grid(self):
-        """Initialize the grid with trees and animals"""
-        # Add some trees randomly (adjusted for 12x12 grid)
-        tree_positions = [
-            (2, 3), (4, 8), (9, 5), (1, 10), (11, 2),
-            (5, 1), (8, 9), (3, 6), (7, 11), (2, 9),
-            (10, 4), (5, 3), (9, 8), (3, 4), (11, 6)
-        ]
+        """Initialize the grid from embedded map definitions"""
+        # Get the map definition for the specified difficulty
+        if self.difficulty not in MAP_DEFINITIONS:
+            print(f"Warning: Unknown difficulty '{self.difficulty}'. Using 'medium'.")
+            self.difficulty = 'medium'
         
-        for pos in tree_positions:
-            if 0 <= pos[0] < GRID_SIZE and 0 <= pos[1] < GRID_SIZE:
-                self.grid[pos] = TREE
+        map_data = MAP_DEFINITIONS[self.difficulty]
+        lines = map_data.strip().split('\n')
         
-        # Place animals in safe positions (not too close to trees or drone)
-        animal_positions = {
-            ZEBRA: (3, 3),
-            ELEPHANT: (9, 9), 
-            ORYX: (2, 9)
+        # Skip the legend line and column header line
+        map_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Grid Legend') or line.startswith('   '):
+                continue
+            if line and not line.startswith('#'):  # Skip comments and empty lines
+                map_lines.append(line)
+        
+        # Parse the map (remember the format has row 11 at top, row 0 at bottom)
+        symbol_to_value = {
+            '.': EMPTY,
+            'T': TREE,
+            'Z': ZEBRA,
+            'E': ELEPHANT,
+            'O': ORYX
         }
         
-        for animal, pos in animal_positions.items():
-            self.grid[pos] = animal
+        for line in map_lines:
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    row_num = int(parts[0])
+                    symbols = parts[1:]
+                    
+                    for col, symbol in enumerate(symbols):
+                        if 0 <= row_num < GRID_SIZE and col < GRID_SIZE:
+                            if symbol in symbol_to_value:
+                                self.grid[row_num, col] = symbol_to_value[symbol]
+                except ValueError:
+                    continue  # Skip malformed lines
             
     def _is_valid_position(self, row, col):
         """Check if position is within grid bounds"""
@@ -232,14 +306,6 @@ class DroneSafariGame:
                     if dr != 0 or dc != 0:  # Skip if animal is at drone position (shouldn't happen)
                         direction_str = format_direction(dr, dc)
                         gps_detections.append(f"{object_names[cell_value]} GPS at {direction_str}")
-        
-        # Add scared animal GPS positions
-        for (scared_row, scared_col) in self.scared_animals:
-            dr = scared_row - current_row
-            dc = scared_col - current_col
-            if dr != 0 or dc != 0:  # Skip if scared animal is at drone position
-                direction_str = format_direction(dr, dc)
-                gps_detections.append(f"scared animal GPS at {direction_str}")
         
         # Scan in a 5x5 grid centered on drone (2 cells in each direction) for trees and boundaries only
         proximity_detections = []
@@ -594,7 +660,8 @@ class DroneSafariGame:
     
     def reset_game(self):
         """Reset the game to initial state"""
-        self.__init__()
+        difficulty = self.difficulty  # Preserve the current difficulty
+        self.__init__(difficulty)
         return "Game reset! Ready to start again."
     
     def visualize(self, figsize=(8, 6)):
@@ -899,8 +966,9 @@ class DroneSafariGame:
 class InteractiveDroneSafariGame:
     """Interactive version of the drone safari game with keyboard controls"""
     
-    def __init__(self):
-        self.game = DroneSafariGame()
+    def __init__(self, difficulty="medium"):
+        self.difficulty = difficulty
+        self.game = DroneSafariGame(difficulty)
         self.fig = None
         self.ax = None
         self.running = True
@@ -920,7 +988,7 @@ class InteractiveDroneSafariGame:
                 return
             elif event.key in ['up', 'down', 'left', 'right', 'a', 'd', 'enter', 'r']:
                 # Restart game with any action key
-                self.game = DroneSafariGame()
+                self.game = DroneSafariGame(self.difficulty)
                 result = "Game restarted! Ready to play again."
                 print(f"Action result: {result}")
                 self.update_display()
@@ -951,7 +1019,7 @@ class InteractiveDroneSafariGame:
         
         # R key for reset (during gameplay)
         elif event.key == 'r':
-            self.game = DroneSafariGame()
+            self.game = DroneSafariGame(self.difficulty)
             result = "Game reset! Ready to start again."
             
         # Q key for quit
@@ -1313,10 +1381,15 @@ class InteractiveDroneSafariGame:
         plt.show()
 
 
-def main():
-    """Main function to run the interactive game"""
+def main(difficulty="medium"):
+    """Main function to run the interactive game
+    
+    Args:
+        difficulty (str): Difficulty level to load. Options: easy, medium, hard
+    """
     try:
-        interactive_game = InteractiveDroneSafariGame()
+        print(f"Starting Drone Safari Game with difficulty: {difficulty}")
+        interactive_game = InteractiveDroneSafariGame(difficulty)
         interactive_game.start_interactive_game()
     except KeyboardInterrupt:
         print("\nGame interrupted by user. Goodbye!")
@@ -1326,4 +1399,23 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    # Check for difficulty argument
+    difficulty = "medium"  # default
+    if len(sys.argv) > 1:
+        difficulty = sys.argv[1].lower()
+        if difficulty not in ['easy', 'medium', 'hard']:
+            print(f"Unknown difficulty '{sys.argv[1]}'. Using 'medium'.")
+            difficulty = "medium"
+    
+    # Display available difficulties
+    print("=== DRONE SAFARI GAME ===")
+    print("Available difficulty levels:")
+    print("- easy (fewest trees)")
+    print("- medium (some trees) [DEFAULT]")  
+    print("- hard (most trees)")
+    print(f"Loading: {difficulty}")
+    print()
+    
+    main(difficulty)
