@@ -182,7 +182,7 @@ class DroneSafariGame:
         return (0, 0)  # No movement
     
     def _get_sensor_summary(self):
-        """Scan surrounding cells up to 2 cells away and return a summary of detected objects"""
+        """Scan surrounding cells up to 2 cells away for trees/boundaries, but always show animal GPS positions"""
         detections = []
         current_row, current_col = self.drone_pos
         
@@ -221,7 +221,28 @@ class DroneSafariGame:
             
             return f"({north_south}, {east_west})"
         
-        # Scan in a 5x5 grid centered on drone (2 cells in each direction)
+        # ALWAYS INCLUDE ANIMAL GPS POSITIONS (regardless of distance)
+        gps_detections = []
+        for row in range(GRID_SIZE):
+            for col in range(GRID_SIZE):
+                cell_value = self.grid[row, col]
+                if cell_value in [ZEBRA, ELEPHANT, ORYX]:  # Only animals
+                    dr = row - current_row
+                    dc = col - current_col
+                    if dr != 0 or dc != 0:  # Skip if animal is at drone position (shouldn't happen)
+                        direction_str = format_direction(dr, dc)
+                        gps_detections.append(f"{object_names[cell_value]} GPS at {direction_str}")
+        
+        # Add scared animal GPS positions
+        for (scared_row, scared_col) in self.scared_animals:
+            dr = scared_row - current_row
+            dc = scared_col - current_col
+            if dr != 0 or dc != 0:  # Skip if scared animal is at drone position
+                direction_str = format_direction(dr, dc)
+                gps_detections.append(f"scared animal GPS at {direction_str}")
+        
+        # Scan in a 5x5 grid centered on drone (2 cells in each direction) for trees and boundaries only
+        proximity_detections = []
         for distance in range(1, 3):  # 1 and 2 cells away
             for dr in range(-distance, distance + 1):
                 for dc in range(-distance, distance + 1):
@@ -247,24 +268,22 @@ class DroneSafariGame:
                         
                         if boundary_desc:
                             direction_str = format_direction(dr, dc)
-                            detections.append(f"{' and '.join(boundary_desc)} at {direction_str}")
+                            proximity_detections.append(f"{' and '.join(boundary_desc)} at {direction_str}")
                         continue
                     
-                    # Check what's at this position
+                    # Check for trees only (animals are handled by GPS above)
                     cell_value = self.grid[scan_row, scan_col]
-                    if cell_value in object_names:
+                    if cell_value == TREE:
                         direction_str = format_direction(dr, dc)
-                        detections.append(f"{object_names[cell_value]} at {direction_str}")
-                    
-                    # Check for scared animals at this position
-                    if (scan_row, scan_col) in self.scared_animals:
-                        direction_str = format_direction(dr, dc)
-                        detections.append(f"scared animal location at {direction_str}")
+                        proximity_detections.append(f"tree at {direction_str}")
         
-        if not detections:
-            return "Sensors summary: Nothing of interest detected within 2 cells."
+        # Combine GPS detections and proximity detections
+        all_detections = gps_detections + proximity_detections
+        
+        if not all_detections:
+            return "Sensors summary: No objects detected nearby."
         else:
-            return "Sensors summary: " + "; ".join(detections) + "."
+            return "Sensors summary: " + "; ".join(all_detections) + "."
 
     # Tool methods
     def move(self, move_type, sensors=False):
