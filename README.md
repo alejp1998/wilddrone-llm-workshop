@@ -1,6 +1,6 @@
 # 🚁 Wild Drone LLM Workshop
 
-[![Version](https://img.shields.io/badge/version-1.1.0-8B5CF6?style=flat-square)](https://github.com/alejp1998/wilddrone-llm-workshop)
+[![Version](https://img.shields.io/badge/version-1.2.0-8B5CF6?style=flat-square)](https://github.com/alejp1998/wilddrone-llm-workshop)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-37%20passed-10B981?style=flat-square)](tests/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square)](https://python.org)
@@ -22,6 +22,23 @@ Learn to build AI agents that understand natural language and control robotic sy
 - Progressive complexity from single to multi-step commands
 
 ## Quick Setup
+
+### ☁️ Run in Google Colab (recommended for learners)
+
+The `colab/` folder contains self-contained Colab versions of both notebooks —
+they download the game scripts automatically and read your API key from Colab
+secrets, so no local setup is needed:
+
+| Notebook              | Open in Colab                                                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Part 1 — Travel Agent | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alejp1998/wilddrone-llm-workshop/blob/main/colab/part1-travel-agent-colab.ipynb) |
+| Part 2 — Drone Safari | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alejp1998/wilddrone-llm-workshop/blob/main/colab/part2-drone-safari-colab.ipynb) |
+
+1. Click **Open in Colab** for the part you want.
+2. Add your API key as a Colab secret: click the 🔑 key icon → **Add new secret** → name it `GOOGLE_API_KEY` and paste your key.
+3. **Runtime → Run all**.
+
+### 💻 Run Locally
 
 1. **Clone & Install**
 
@@ -80,8 +97,9 @@ game.take_picture()   # capture photo
 
 ## Files
 
-- `part1-travel-agent.ipynb` - LLM fundamentals workshop
-- `part2-drone-safari.ipynb` - Drone command agent workshop
+- `part1-travel-agent.ipynb` - LLM fundamentals workshop (local edition)
+- `part2-drone-safari.ipynb` - Drone command agent workshop (local edition)
+- `colab/` - Self-contained Google Colab editions of both notebooks
 - `llm_agents.py` - Agent utility classes (model overridable via `LLM_MODEL`)
 - `drone_safari_game.py` - Complete game engine (pure numpy/matplotlib)
 - `images/` - Game assets
