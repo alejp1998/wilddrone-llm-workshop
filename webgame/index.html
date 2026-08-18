@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drone Safari — Wild Drone LLM Workshop Game</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='white' stroke='%230F172A' stroke-width='2.5'/%3E%3Cpath d='M14 34 C20 26 26 20 34 18 C40 16 46 18 46 18 C46 18 44 26 40 32 C34 40 24 46 18 46' fill='none' stroke='%230F172A' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='18' cy='46' r='3' fill='%230F172A'/%3E%3Cpolygon points='46,18 52,16 46,22' fill='%230F172A'/%3E%3C/svg%3E"
+    />
+    <script>
+      (function () {
+        var saved = localStorage.getItem("theme");
+        var theme =
+          saved ||
+          (window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path
+              d="M5 13 C8 9 11 6 15 5 C18 4 20 5 20 5 C20 5 19 9 17 12 C14 16 9 19 6 19"
+              stroke="#0F172A"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+            <circle cx="6" cy="19" r="1.6" fill="#0F172A" />
+            <polygon points="20,5 23,4 20,8" fill="#0F172A" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Drone Safari</div>
+          <div class="brand-sub">Wild Drone LLM Workshop · PixiJS edition</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <select id="difficulty" class="btn" title="Difficulty">
+          <option value="easy">🟢 Easy</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="hard">🔴 Hard</option>
+        </select>
+        <button class="btn" id="btn-restart">↻ Restart</button>
+        <button class="btn" id="btn-theme">🌙/☀️ Theme</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="stage">
+        <div id="pixi-stage"></div>
+        <div class="hint">
+          ↑↓ move · ←→ turn · Space/Enter photo · R restart · Q quit
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel" id="hud">
+          <div class="panel-title">🎯 Mission</div>
+          <div class="hud-row">
+            <span>Position</span><b id="hud-pos">6, 6</b>
+          </div>
+          <div class="hud-row">
+            <span>Facing</span><b id="hud-facing">North</b>
+          </div>
+          <div class="hud-row"><span>Pictures</span><b id="hud-pics">5</b></div>
+          <div class="hud-row">
+            <span>Moves / Turns</span><b id="hud-moves">0 / 0</b>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">📸 Safari Album</div>
+          <div class="album">
+            <div class="album-item" id="album-zebra"><span>🦓</span> Zebra</div>
+            <div class="album-item" id="album-elephant">
+              <span>🐘</span> Elephant
+            </div>
+            <div class="album-item" id="album-oryx"><span>🦌</span> Oryx</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">🎮 Controls</div>
+          <div class="controls">
+            <div class="ctrl-grid">
+              <button class="ctrl" data-action="turn-left">◀</button>
+              <button class="ctrl ctrl-main" data-action="move-forward">
+                ▲
+              </button>
+              <button class="ctrl" data-action="turn-right">▶</button>
+              <button class="ctrl" data-action="move-backward">▼</button>
+              <button class="ctrl ctrl-shot" data-action="picture">📷</button>
+            </div>
+            <button class="btn btn-add" id="btn-sensors">🔋 Sensors</button>
+          </div>
+        </section>
+
+        <section class="panel log-panel">
+          <div class="panel-title">📡 Flight Log</div>
+          <div id="log"></div>
+        </section>
+      </aside>
+    </main>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <div id="overlay-emoji">🏆</div>
+        <h2 id="overlay-title">Game Over</h2>
+        <p id="overlay-sub">Press R or click Restart to fly again.</p>
+        <button class="btn btn-add" id="btn-overlay-restart">
+          ↻ Fly Again
+        </button>
+      </div>
+    </div>
+
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script src="js/game-core.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

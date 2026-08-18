@@ -1,11 +1,18 @@
 # 🚁 Wild Drone LLM Workshop
 
-[![Version](https://img.shields.io/badge/version-1.2.0-8B5CF6?style=flat-square)](https://github.com/alejp1998/wilddrone-llm-workshop)
+[![Version](https://img.shields.io/badge/version-1.3.0-8B5CF6?style=flat-square)](https://github.com/alejp1998/wilddrone-llm-workshop)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-37%20passed-10B981?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/tests-57%20passed-10B981?style=flat-square)](tests/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square)](https://python.org)
+[![Play](https://img.shields.io/badge/Play%20the%20Game-GitHub%20Pages-10B981?style=flat-square)](https://alejp1998.github.io/wilddrone-llm-workshop/)
 
 Learn to build AI agents that understand natural language and control robotic systems through hands-on drone safari automation.
+
+> 🎮 **Play the PixiJS web game right now** — no setup, runs in your browser:
+> **[https://alejp1998.github.io/wilddrone-llm-workshop/](https://alejp1998.github.io/wilddrone-llm-workshop/)**
+> (arrow keys to fly, Space to photograph, or use the on-screen controls)
+
+![Drone Safari web game](docs/webgame_light.png)
 
 ## Workshop Structure
 
@@ -68,6 +75,29 @@ secrets, so no local setup is needed:
    - Beginners: Open `part1-travel-agent.ipynb`
    - Experienced: Jump to `part2-drone-safari.ipynb`
 
+## 🎮 The Web Game (PixiJS)
+
+A polished, browser-playable edition of the drone safari game lives in
+[`webgame/`](webgame/) and is deployed to **GitHub Pages** — try it at
+**[https://alejp1998.github.io/wilddrone-llm-workshop/](https://alejp1998.github.io/wilddrone-llm-workshop/)**.
+
+- **PixiJS v8 renderer** with the workshop's pixel-art sprites (drone, zebra, elephant, oryx, trees)
+- **Faithful logic port** — `webgame/js/game-core.js` mirrors `drone_safari_game.py`
+  rule-for-rule (movement, crashes, scare mechanic, photo rules, win conditions, all 3 difficulties, sensors)
+- **Cockpit UI** — system-aware dark/light theme, live HUD, safari album, on-screen D-pad, flight log, mission-failed/victory overlays
+- **Keyboard**: `↑↓` move · `←→` turn · `Space`/`Enter` photo · `R` restart · `Q` quit
+
+```bash
+# Play locally
+python3 -m http.server 8080 --directory webgame
+# → http://localhost:8080
+```
+
+![Mission failed overlay](docs/webgame_failed.png)
+
+The web game core ships with its own test suite (20 `node --test` cases verifying
+parity with the Python engine) — run with `node --test webgame/tests/`.
+
 ## The Game
 
 Navigate a drone in a 12x12 safari park to photograph 3 animal species (🦓🐘🦌) with only 5 pictures.
@@ -100,10 +130,12 @@ game.take_picture()   # capture photo
 - `part1-travel-agent.ipynb` - LLM fundamentals workshop (local edition)
 - `part2-drone-safari.ipynb` - Drone command agent workshop (local edition)
 - `colab/` - Self-contained Google Colab editions of both notebooks
+- `webgame/` - PixiJS browser game (deployed to GitHub Pages)
 - `llm_agents.py` - Agent utility classes (model overridable via `LLM_MODEL`)
 - `drone_safari_game.py` - Complete game engine (pure numpy/matplotlib)
 - `images/` - Game assets
 - `tests/` - 37 unit tests for the game engine and agent utilities (no API key required)
+- `webgame/tests/` - 20 node tests verifying web-game/engine parity
 
 ## Development
 
