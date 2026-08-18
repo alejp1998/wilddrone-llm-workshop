@@ -30,11 +30,15 @@
   function groundColors() {
     var dark = document.documentElement.getAttribute("data-theme") === "dark";
     return {
-      empty: dark ? 0x111827 : 0xffffff,
-      grid: dark ? 0x1f2937 : 0xe2e8f0,
-      tree: dark ? 0x052e16 : 0xf0fdf4,
-      photo: dark ? 0x0f172a : 0xfffbeb,
-      trail: dark ? 0x334155 : 0xcbd5e1,
+      panel: dark ? 0x0d1526 : 0xffffff,
+      panelBorder: dark ? 0x2e3f5e : 0x0f172a,
+      empty: dark ? 0x151f38 : 0xffffff,
+      grid: dark ? 0x3d4f6e : 0xdfe6f0,
+      tree: dark ? 0x1b4332 : 0xf0fdf4,
+      photo: dark ? 0x1e293b : 0xfffbeb,
+      trail: dark ? 0x7dd3fc : 0x64748b,
+      banner: dark ? 0x0f172a : 0xffffff,
+      bannerBorder: dark ? 0x475569 : 0x0f172a,
     };
   }
 
@@ -94,6 +98,21 @@
     board.removeChildren();
     var colors = groundColors();
 
+    // Board panel (rounded card behind the grid)
+    var boardPx = cellSize * S.GRID_SIZE;
+    var panel = new PIXI.Graphics();
+    panel
+      .roundRect(
+        -boardPx * 0.035,
+        -boardPx * 0.035,
+        boardPx * 1.07,
+        boardPx * 1.07,
+        18,
+      )
+      .fill({ color: colors.panel })
+      .stroke({ width: 2, color: colors.panelBorder, alpha: 0.85 });
+    board.addChild(panel);
+
     // Grid cells
     for (var r = 0; r < S.GRID_SIZE; r++) {
       for (var c = 0; c < S.GRID_SIZE; c++) {
@@ -110,6 +129,18 @@
         board.addChild(cell);
       }
     }
+
+    // Grid lines on top of the cells for crisp visibility in both themes
+    var lines = new PIXI.Graphics();
+    for (var g = 0; g <= S.GRID_SIZE; g++) {
+      lines
+        .moveTo(g * cellSize, 0)
+        .lineTo(g * cellSize, boardPx)
+        .moveTo(0, g * cellSize)
+        .lineTo(boardPx, g * cellSize);
+    }
+    lines.stroke({ width: 1.5, color: colors.grid, alpha: 0.9 });
+    board.addChild(lines);
 
     // Movement trail (visual only — lines between consecutive moves)
     // We re-derive the trail from the last few positions via a trail array kept by render loop
@@ -169,6 +200,9 @@
         board.addChild(spr);
       }
     }
+
+    // In-canvas game-over / victory banner (board stays fully visible behind it)
+    if (game.game_over) drawBanner();
 
     // Drone (rotated to its facing direction; North = up on screen)
     var drone = new PIXI.Sprite(
@@ -255,7 +289,6 @@
     else if (action === "picture") msg = game.take_picture();
     render();
     log(msg.split("\n")[0]);
-    if (game.game_over) showOverlay();
   }
 
   function doSensors() {
@@ -266,30 +299,70 @@
   function restart() {
     game.reset_game();
     _lastTrailPos = null;
-    document.getElementById("overlay").classList.add("hidden");
     render();
     log("🔄 Restarted — difficulty: " + game.difficulty);
   }
 
-  function showOverlay() {
-    var overlay = document.getElementById("overlay");
-    document.getElementById("overlay-emoji").textContent = game.game_won
-      ? "🏆"
-      : "💥";
-    document.getElementById("overlay-title").textContent = game.game_won
-      ? "Mission Accomplished!"
-      : "Mission Failed";
+  /** In-canvas game-over / victory banner drawn on the board container. */
+  function drawBanner() {
+    var boardPx = cellSize * S.GRID_SIZE;
+    var colors = groundColors();
+    var banner = new PIXI.Container();
+
+    var box = new PIXI.Graphics();
+    box
+      .roundRect(0, 0, boardPx, cellSize * 1.5, 12)
+      .fill({ color: colors.banner, alpha: 0.92 })
+      .stroke({ width: 2, color: colors.bannerBorder });
+    banner.addChild(box);
+
+    var emoji = game.game_won ? "🏆" : "💥";
+    var title = game.game_won ? "Mission Accomplished!" : "Mission Failed";
     var reason = game.failure_reason || "mission_incomplete";
-    var sub = {
-      boundary_crash: "The drone flew out of the park boundaries.",
-      tree_crash: "The drone crashed into a tree.",
-      animal_crash: "The drone crashed into an animal.",
-      scared_animal: "Too close! The animal got scared and ran away.",
-      out_of_pictures: "Out of pictures — the safari mission is incomplete.",
-    }[reason];
-    document.getElementById("overlay-sub").textContent =
-      (sub || "The mission ended.") + " Press R or click Restart to fly again.";
-    overlay.classList.remove("hidden");
+    var sub =
+      {
+        boundary_crash: "The drone flew out of the park boundaries.",
+        tree_crash: "The drone crashed into a tree.",
+        animal_crash: "The drone crashed into an animal.",
+        scared_animal: "Too close! An animal got scared and ran away.",
+        out_of_pictures: "Out of pictures — the safari mission is incomplete.",
+      }[reason] || "The mission ended.";
+
+    var emojiText = new PIXI.Text({
+      text: emoji,
+      style: { fontSize: cellSize * 0.55 },
+    });
+    emojiText.x = cellSize * 0.35;
+    emojiText.y = cellSize * 0.38;
+    banner.addChild(emojiText);
+
+    var titleText = new PIXI.Text({
+      text: title,
+      style: {
+        fontFamily: "Space Grotesk, sans-serif",
+        fontSize: cellSize * 0.42,
+        fontWeight: "700",
+        fill: game.game_won ? 0x34d399 : 0xfb7185,
+      },
+    });
+    titleText.x = cellSize * 1.35;
+    titleText.y = cellSize * 0.22;
+    banner.addChild(titleText);
+
+    var subText = new PIXI.Text({
+      text: sub + "  ·  press R to restart",
+      style: {
+        fontFamily: "DM Sans, sans-serif",
+        fontSize: cellSize * 0.24,
+        fill: colors.grid,
+      },
+    });
+    subText.x = cellSize * 1.35;
+    subText.y = cellSize * 0.82;
+    banner.addChild(subText);
+
+    banner.y = -cellSize * 0.9;
+    board.addChild(banner);
   }
 
   // ---------------------------------------------------------------- input
@@ -320,16 +393,12 @@
     });
     document.getElementById("btn-sensors").addEventListener("click", doSensors);
     document.getElementById("btn-restart").addEventListener("click", restart);
-    document
-      .getElementById("btn-overlay-restart")
-      .addEventListener("click", restart);
 
     document
       .getElementById("difficulty")
       .addEventListener("change", function (e) {
         game = new S.DroneSafariGame(e.target.value);
         _lastTrailPos = null;
-        document.getElementById("overlay").classList.add("hidden");
         render();
         log("🗺️ Difficulty set to " + game.difficulty);
       });

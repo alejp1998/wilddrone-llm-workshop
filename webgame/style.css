@@ -254,36 +254,3 @@ main {
 #log .log-bad {
   color: var(--rose);
 }
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-.overlay.hidden {
-  display: none;
-}
-.overlay-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 2.2rem 3rem;
-  text-align: center;
-  max-width: 380px;
-}
-.overlay-card h2 {
-  font-family: var(--font-heading);
-  margin: 0.6rem 0 0.4rem;
-}
-#overlay-emoji {
-  font-size: 3rem;
-}
-.overlay-card p {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-bottom: 1.2rem;
-}
