@@ -1,0 +1,21 @@
+# Wild Drone LLM Workshop — Python dependencies
+# Python 3.9+ recommended
+
+# Core
+litellm>=1.40
+numpy>=1.24
+matplotlib>=3.7
+python-dotenv>=1.0
+
+# Interactive notebook widgets
+ipywidgets>=8.0
+
+# Development / quality gates
+pytest>=7.4
+ruff>=0.4
+pre-commit>=3.5
+
+# Notebook execution (optional, for CI verification)
+jupyter>=1.0
+nbconvert>=7.0
+nbclient>=0.8
