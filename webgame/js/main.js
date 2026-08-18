@@ -314,11 +314,28 @@
     var colors = groundColors();
     var banner = new PIXI.Container();
 
+    var bW = boardPx * 0.92;
+    var bH = cellSize * 2.6;
+
+    // Scrim behind the banner: full-width translucent bar so the banner pops
+    var scrim = new PIXI.Graphics();
+    scrim
+      .roundRect(
+        -boardPx * 0.02,
+        -cellSize * 0.6,
+        boardPx * 1.04,
+        bH + cellSize * 1.2,
+        14,
+      )
+      .fill({ color: 0x020617, alpha: 0.35 });
+    banner.addChild(scrim);
+
+    // Banner card
     var box = new PIXI.Graphics();
     box
-      .roundRect(0, 0, boardPx, cellSize * 1.5, 12)
-      .fill({ color: colors.banner, alpha: 0.98 })
-      .stroke({ width: 3, color: colors.bannerBorder });
+      .roundRect(0, 0, bW, bH, 16)
+      .fill({ color: colors.banner, alpha: 0.99 })
+      .stroke({ width: 4, color: colors.bannerBorder });
     banner.addChild(box);
 
     var emoji = game.game_won ? "🏆" : "💥";
@@ -335,39 +352,44 @@
 
     var emojiText = new PIXI.Text({
       text: emoji,
-      style: { fontSize: cellSize * 0.55 },
+      style: { fontSize: cellSize * 0.95 },
     });
-    emojiText.x = cellSize * 0.35;
-    emojiText.y = cellSize * 0.38;
+    emojiText.anchor.set(0.5);
+    emojiText.x = cellSize * 0.85;
+    emojiText.y = bH / 2;
     banner.addChild(emojiText);
 
     var titleText = new PIXI.Text({
       text: title,
       style: {
         fontFamily: "Space Grotesk, sans-serif",
-        fontSize: cellSize * 0.42,
+        fontSize: cellSize * 0.62,
         fontWeight: "700",
         fill: game.game_won ? colors.bannerWin : colors.bannerFail,
       },
     });
-    titleText.x = cellSize * 1.35;
-    titleText.y = cellSize * 0.22;
+    titleText.x = cellSize * 1.5;
+    titleText.y = cellSize * 0.42;
     banner.addChild(titleText);
 
     var subText = new PIXI.Text({
       text: sub + "  ·  press R to restart",
       style: {
         fontFamily: "DM Sans, sans-serif",
-        fontSize: cellSize * 0.24,
+        fontSize: cellSize * 0.34,
         fontWeight: "500",
         fill: colors.bannerMuted,
+        wordWrap: true,
+        wordWrapWidth: bW - cellSize * 1.9,
       },
     });
-    subText.x = cellSize * 1.35;
-    subText.y = cellSize * 0.82;
+    subText.x = cellSize * 1.5;
+    subText.y = cellSize * 1.3;
     banner.addChild(subText);
 
-    banner.y = -cellSize * 0.9;
+    // Center the banner over the board
+    banner.x = (boardPx - bW) / 2;
+    banner.y = (boardPx - bH) / 2;
     board.addChild(banner);
   }
 

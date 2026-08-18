@@ -10,6 +10,7 @@
   --green: #34d399;
   --amber: #fbbf24;
   --rose: #fb7185;
+  --warn: #b45309;
   --font-body: "DM Sans", system-ui, sans-serif;
   --font-heading: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -21,6 +22,7 @@
   --text: #0f172a;
   --muted: #475569;
   --dim: #94a3b8;
+  --warn: #b45309;
 }
 * {
   box-sizing: border-box;
@@ -137,8 +139,8 @@ main {
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--dim);
+  font-size: 0.76rem;
+  color: var(--muted);
   background: var(--bg-card);
   border: 1px solid var(--border);
   padding: 0.35rem 0.9rem;
@@ -179,6 +181,7 @@ main {
 .hud-row b {
   font-family: var(--font-mono);
   color: var(--text);
+  font-size: 0.92em;
 }
 .album {
   display: flex;
@@ -240,19 +243,22 @@ main {
 #log {
   overflow-y: auto;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  line-height: 1.5;
-  color: var(--muted);
-  max-height: 220px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text);
+  max-height: 260px;
 }
 #log .log-warn {
-  color: var(--amber);
+  color: var(--warn);
+  font-weight: 600;
 }
 #log .log-good {
   color: var(--green);
+  font-weight: 600;
 }
 #log .log-bad {
   color: var(--rose);
+  font-weight: 600;
 }
 
 /* Guide modal */
