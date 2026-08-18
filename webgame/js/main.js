@@ -206,6 +206,9 @@
       }
     }
 
+    // Facing indicator: translucent FOV wedge + bold arrowhead in front of the drone
+    if (!game.game_over) drawFacingIndicator();
+
     // Drone (rotated to its facing direction; North = up on screen)
     var drone = new PIXI.Sprite(
       game.game_over ? sprites.crashed : sprites.drone,
@@ -226,6 +229,52 @@
     updateHud();
     updateBanner();
   }
+
+  /** Bold facing indicator: amber wedge + arrowhead showing where the drone points. */
+  function drawFacingIndicator() {
+    var r = game.drone_pos[0];
+    var c = game.drone_pos[1];
+    var cx = (c + 0.5) * cellSize;
+    var cy = (S.GRID_SIZE - 1 - r + 0.5) * cellSize;
+    var d = DIRECTIONS_MAP[game.drone_facing];
+
+    // Wedge: triangle fan in front of the drone (about 1.1 cells forward)
+    var wedge = new PIXI.Graphics();
+    wedge
+      .moveTo(cx + d[0] * cellSize * 0.18, cy + d[1] * cellSize * 0.18)
+      .lineTo(
+        cx - d[1] * cellSize * 0.34 + d[0] * cellSize * 0.5,
+        cy + d[0] * cellSize * 0.34 + d[1] * cellSize * 0.5,
+      )
+      .lineTo(
+        cx + d[1] * cellSize * 0.34 + d[0] * cellSize * 0.5,
+        cy - d[0] * cellSize * 0.34 + d[1] * cellSize * 0.5,
+      )
+      .fill({ color: 0xf59e0b, alpha: 0.3 })
+      .stroke({ width: 2, color: 0xf59e0b, alpha: 0.9 });
+    board.addChild(wedge);
+
+    // Bold arrowhead at the tip of the wedge
+    var tipX = cx + d[0] * cellSize * 0.95;
+    var tipY = cy + d[1] * cellSize * 0.95;
+    var ax = -d[1];
+    var ay = d[0];
+    var head = new PIXI.Graphics();
+    head
+      .moveTo(tipX + d[0] * cellSize * 0.18, tipY + d[1] * cellSize * 0.18)
+      .lineTo(tipX - ax * cellSize * 0.24, tipY - ay * cellSize * 0.24)
+      .lineTo(tipX + ax * cellSize * 0.24, tipY + ay * cellSize * 0.24)
+      .fill({ color: 0xf59e0b, alpha: 0.95 })
+      .stroke({ width: 1.5, color: 0x92400e });
+    board.addChild(head);
+  }
+
+  var DIRECTIONS_MAP = {
+    North: [0, -1],
+    East: [1, 0],
+    South: [0, 1],
+    West: [-1, 0],
+  };
 
   var _lastTrailPos = null;
   function drawTrail(color) {
@@ -255,7 +304,9 @@
   function updateHud() {
     var st = game.get_status();
     document.getElementById("hud-pos").textContent = st.position.join(", ");
-    document.getElementById("hud-facing").textContent = st.facing;
+    var facingArrows = { North: "↑", East: "→", South: "↓", West: "←" };
+    document.getElementById("hud-facing").textContent =
+      st.facing + " " + (facingArrows[st.facing] || "");
     document.getElementById("hud-pics").textContent = st.pictures_remaining;
     document.getElementById("hud-moves").textContent =
       st.total_moves + " / " + st.total_turns;
@@ -264,6 +315,9 @@
         .getElementById("album-" + k)
         .classList.toggle("captured", st.animals_photographed[k]);
     });
+    if (!game.game_over) {
+      document.getElementById("hud-result").classList.add("hidden");
+    }
   }
 
   // ---------------------------------------------------------------- logging
@@ -311,20 +365,23 @@
     var banner = document.getElementById("game-banner");
     if (!game.game_over) {
       banner.classList.add("hidden");
+      document.getElementById("hud-result").classList.add("hidden");
       return;
     }
 
     var emoji = game.game_won ? "🏆" : "💥";
     var title = game.game_won ? "Mission Accomplished!" : "Mission Failed";
     var reason = game.failure_reason || "mission_incomplete";
-    var sub =
-      {
-        boundary_crash: "The drone flew out of the park boundaries.",
-        tree_crash: "The drone crashed into a tree.",
-        animal_crash: "The drone crashed into an animal.",
-        scared_animal: "Too close! An animal got scared and ran away.",
-        out_of_pictures: "Out of pictures — the safari mission is incomplete.",
-      }[reason] || "The mission ended.";
+    var sub = game.game_won
+      ? "All 3 safari species photographed — the safari is complete!"
+      : {
+          boundary_crash: "The drone flew out of the park boundaries.",
+          tree_crash: "The drone crashed into a tree.",
+          animal_crash: "The drone crashed into an animal.",
+          scared_animal: "Too close! An animal got scared and ran away.",
+          out_of_pictures:
+            "Out of pictures — the safari mission is incomplete.",
+        }[reason] || "The mission ended.";
 
     document.getElementById("game-banner-emoji").textContent = emoji;
     document.getElementById("game-banner-title").textContent = title;
@@ -333,16 +390,29 @@
     banner.classList.toggle("fail", !game.game_won);
     banner.classList.toggle("win", game.game_won);
 
-    // Position over the board (stage = canvas = board coordinate space)
-    var boardPx = cellSize * S.GRID_SIZE;
-    var bannerW = Math.min(560, boardPx * 0.92);
-    var stage = document.getElementById("pixi-stage");
-    var left = board.x + (boardPx - bannerW) / 2;
-    var top = board.y + cellSize * 0.6;
-    banner.style.left = left + "px";
-    banner.style.top = top + "px";
-    banner.style.width = bannerW + "px";
+    // Corner toast: pinned to the stage's top-left margin, never covers the board
+    banner.style.left = "14px";
+    banner.style.top = "14px";
+    banner.style.width = "auto";
+    banner.style.maxWidth = "420px";
     banner.classList.remove("hidden");
+
+    // Sidebar Mission panel shows the outcome too
+    var result = document.getElementById("hud-result");
+    result.innerHTML =
+      '<div class="hud-result-inner ' +
+      (game.game_won ? "win" : "fail") +
+      '">' +
+      "<b>" +
+      emoji +
+      " " +
+      title +
+      "</b>" +
+      "<span>" +
+      sub +
+      "</span>" +
+      "</div>";
+    result.classList.remove("hidden");
   }
 
   // ---------------------------------------------------------------- guide modal
@@ -366,6 +436,44 @@
   }
 
   // ---------------------------------------------------------------- input
+  var KEY_LABELS = {
+    ArrowUp: { label: "↑", action: "move-forward", text: "↑ Move forward" },
+    w: { label: "W", action: "move-forward", text: "W Move forward" },
+    W: { label: "W", action: "move-forward", text: "W Move forward" },
+    ArrowDown: { label: "↓", action: "move-backward", text: "↓ Move backward" },
+    s: { label: "S", action: "move-backward", text: "S Move backward" },
+    S: { label: "S", action: "move-backward", text: "S Move backward" },
+    ArrowLeft: { label: "←", action: "turn-left", text: "← Turn left" },
+    a: { label: "A", action: "turn-left", text: "A Turn left" },
+    A: { label: "A", action: "turn-left", text: "A Turn left" },
+    ArrowRight: { label: "→", action: "turn-right", text: "→ Turn right" },
+    d: { label: "D", action: "turn-right", text: "D Turn right" },
+    D: { label: "D", action: "turn-right", text: "D Turn right" },
+    " ": { label: "␣", action: "picture", text: "␣ Space — Take picture" },
+    Enter: { label: "↵", action: "picture", text: "↵ Enter — Take picture" },
+    r: { label: "R", action: "restart", text: "R Restart" },
+    R: { label: "R", action: "restart", text: "R Restart" },
+    q: { label: "Q", action: "quit", text: "Q Quit" },
+    Q: { label: "Q", action: "quit", text: "Q Quit" },
+  };
+
+  function markLastKey(e) {
+    var info = KEY_LABELS[e.key];
+    if (!info) return;
+    document.getElementById("last-key").textContent = info.text;
+    // Flash + mark the matching on-screen control button
+    document.querySelectorAll("[data-action]").forEach(function (btn) {
+      var active = btn.getAttribute("data-action") === info.action;
+      btn.classList.toggle("key-pressed", active);
+    });
+    if (info.action === "restart") {
+      document.getElementById("btn-restart").classList.add("key-pressed");
+      setTimeout(function () {
+        document.getElementById("btn-restart").classList.remove("key-pressed");
+      }, 500);
+    }
+  }
+
   function wireInput() {
     document.addEventListener("keydown", function (e) {
       if (e.repeat) return;
@@ -385,6 +493,7 @@
         if (confirm("Quit the safari game?")) window.close();
       } else return;
       e.preventDefault();
+      markLastKey(e);
     });
 
     document.querySelectorAll("[data-action]").forEach(function (btn) {

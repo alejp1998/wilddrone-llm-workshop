@@ -1343,19 +1343,33 @@ class InteractiveDroneSafariGame:
                 # Try to use drone icon, fallback to blue circle with arrow
                 if drone_icon is not None:
                     add_icon_to_plot(self.ax, drone_col, drone_row, drone_icon, zorder=10)
-                    # Add facing direction indicator (small arrow overlay)
+                    # Add facing direction indicator (bold wedge + arrow overlay)
                     dr, dc = DIRECTIONS[self.game.drone_facing]
+                    # Translucent FOV wedge in the facing direction
+                    wedge = patches.Polygon(
+                        [
+                            (drone_col - 0.28 + dc * 0.35, drone_row - 0.28 + dr * 0.35),
+                            (drone_col + 0.28 + dc * 0.35, drone_row + 0.28 + dr * 0.35),
+                            (drone_col + dc * 1.15, drone_row + dr * 1.15),
+                        ],
+                        closed=True,
+                        color="gold",
+                        alpha=0.35,
+                        zorder=9.5,
+                    )
+                    self.ax.add_patch(wedge)
+                    # Bold directional arrow
                     self.ax.arrow(
-                        drone_col,
-                        drone_row,
-                        dc * 0.7,
-                        dr * 0.7,
-                        head_width=0.12,
-                        head_length=0.1,
-                        fc="blue",
-                        ec="blue",
-                        zorder=11,
-                        linewidth=2,
+                        drone_col + dc * 0.05,
+                        drone_row + dr * 0.05,
+                        dc * 0.9,
+                        dr * 0.9,
+                        head_width=0.34,
+                        head_length=0.3,
+                        fc="#b45309",
+                        ec="#78350f",
+                        zorder=12,
+                        linewidth=2.5,
                     )
                 else:
                     # Fallback: Draw normal drone in blue
