@@ -37,8 +37,12 @@
       tree: dark ? 0x1b4332 : 0xf0fdf4,
       photo: dark ? 0x1e293b : 0xfffbeb,
       trail: dark ? 0x7dd3fc : 0x64748b,
-      banner: dark ? 0x0f172a : 0xffffff,
-      bannerBorder: dark ? 0x475569 : 0x0f172a,
+      banner: dark ? 0x111827 : 0xffffff,
+      bannerBorder: dark ? 0x64748b : 0x0f172a,
+      bannerText: dark ? 0xf1f5f9 : 0x0f172a,
+      bannerMuted: dark ? 0xcbd5e1 : 0x475569,
+      bannerFail: dark ? 0xfb7185 : 0xdc2626,
+      bannerWin: dark ? 0x34d399 : 0x059669,
     };
   }
 
@@ -313,8 +317,8 @@
     var box = new PIXI.Graphics();
     box
       .roundRect(0, 0, boardPx, cellSize * 1.5, 12)
-      .fill({ color: colors.banner, alpha: 0.92 })
-      .stroke({ width: 2, color: colors.bannerBorder });
+      .fill({ color: colors.banner, alpha: 0.98 })
+      .stroke({ width: 3, color: colors.bannerBorder });
     banner.addChild(box);
 
     var emoji = game.game_won ? "🏆" : "💥";
@@ -343,7 +347,7 @@
         fontFamily: "Space Grotesk, sans-serif",
         fontSize: cellSize * 0.42,
         fontWeight: "700",
-        fill: game.game_won ? 0x34d399 : 0xfb7185,
+        fill: game.game_won ? colors.bannerWin : colors.bannerFail,
       },
     });
     titleText.x = cellSize * 1.35;
@@ -355,7 +359,8 @@
       style: {
         fontFamily: "DM Sans, sans-serif",
         fontSize: cellSize * 0.24,
-        fill: colors.grid,
+        fontWeight: "500",
+        fill: colors.bannerMuted,
       },
     });
     subText.x = cellSize * 1.35;
