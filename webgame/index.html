@@ -78,6 +78,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="btn" id="btn-guide">📖 Guide</button>
         <select id="difficulty" class="btn" title="Difficulty">
           <option value="easy">🟢 Easy</option>
           <option value="medium" selected>🟡 Medium</option>
@@ -144,6 +145,126 @@
         </section>
       </aside>
     </main>
+
+    <div id="guide" class="modal hidden">
+      <div class="modal-backdrop" data-close-guide></div>
+      <div class="modal-card">
+        <button class="modal-close" data-close-guide title="Close">✕</button>
+        <div class="modal-title">📖 Drone Safari — Guide</div>
+
+        <section class="guide-section">
+          <h3>🎓 The Workshop Behind This Game</h3>
+          <p>
+            This game is the playground of the
+            <b>Wild Drone LLM Workshop</b> — a hands-on course that teaches
+            students how to build
+            <b
+              >AI agents that understand natural language and control robotic
+              systems</b
+            >. The goal is to make LLM concepts tangible: instead of abstract
+            demos, students drive a drone through natural-language commands and
+            watch the consequences in real time.
+          </p>
+          <ul>
+            <li>
+              <b>How LLMs work</b> — tokens, context, prompting, and why models
+              are limited to their training data.
+            </li>
+            <li>
+              <b>Tool calling &amp; function execution</b> — giving an LLM
+              external functions (<code>move()</code>, <code>turn()</code>,
+              <code>take_picture()</code>) so it can act on the world.
+            </li>
+            <li>
+              <b>Natural language → robot commands</b> — translating free-form
+              instructions into structured actions.
+            </li>
+            <li>
+              <b>Prompt engineering</b> — system prompts that shape agent
+              behaviour and reliability.
+            </li>
+            <li>
+              <b>Agent design</b> — single-action vs. multi-action agents,
+              sensor feedback, and autonomous decision loops.
+            </li>
+          </ul>
+          <p class="guide-note">
+            The notebooks (<code>part1-travel-agent.ipynb</code>,
+            <code>part2-drone-safari.ipynb</code>) build a command agent for
+            this exact game using Python + LiteLLM — try the Colab editions in
+            the <code>colab/</code> folder of the repository.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h3>🚁 The Game</h3>
+          <p>
+            Navigate a drone across a <b>12×12 safari park</b> and photograph
+            <b>3 animal species</b> (🦓 zebra, 🐘 elephant, 🦌 oryx) with only
+            <b>5 pictures</b>.
+          </p>
+          <ul>
+            <li>
+              🌳 Avoid trees and park boundaries — crashing ends the mission.
+            </li>
+            <li>
+              📸 An animal must be <b>exactly 2 cells away</b>, in the direction
+              you face, for a valid photo.
+            </li>
+            <li>🚧 A tree between you and the animal blocks the shot.</li>
+            <li>
+              😱 Getting <b>too close</b> (adjacent) scares the animal away —
+              the mission fails.
+            </li>
+            <li>
+              🏆 Photograph all three species to win. Run out of pictures and
+              it's game over.
+            </li>
+            <li>
+              🔋 The <b>Sensors</b> button shows what the drone detects: animal
+              GPS positions, nearby trees and boundaries — just like the sensor
+              tools the workshop agent uses.
+            </li>
+          </ul>
+        </section>
+
+        <section class="guide-section">
+          <h3>🎮 How to Play</h3>
+          <ul>
+            <li>
+              <b>Keyboard:</b> <code>↑</code>/<code>↓</code> move ·
+              <code>←</code>/<code>→</code> turn · <code>Space</code>/<code
+                >Enter</code
+              >
+              photo · <code>R</code> restart · <code>Q</code> quit
+            </li>
+            <li>
+              <b>On-screen:</b> D-pad buttons for move/turn, 📷 for photo, 🔋
+              Sensors for the scan
+            </li>
+            <li>
+              <b>Difficulty:</b> Easy / Medium / Hard changes tree placement and
+              park layout
+            </li>
+            <li>
+              Watch the <b>Flight Log</b> for live feedback — the same messages
+              the LLM agent would receive in the notebooks.
+            </li>
+          </ul>
+        </section>
+
+        <section class="guide-section">
+          <h3>🤖 Agent API (what the LLM uses)</h3>
+          <pre><code>game.move("forward")   # forward | backward | left | right
+game.turn("left")      # left | right
+game.take_picture()    # capture photo</code></pre>
+          <p class="guide-note">
+            Every call returns a message the agent can read — exactly how the
+            workshop's natural-language command agent learns to fly this drone.
+          </p>
+        </section>
+      </div>
+    </div>
 
     <script src="https://pixijs.download/release/pixi.min.js"></script>
     <script src="js/game-core.js"></script>

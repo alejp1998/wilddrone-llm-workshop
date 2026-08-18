@@ -71,6 +71,7 @@
     render();
 
     wireInput();
+    wireGuide();
     log(
       "🛰️ Game started — difficulty: " +
         game.difficulty +
@@ -365,10 +366,31 @@
     board.addChild(banner);
   }
 
+  // ---------------------------------------------------------------- guide modal
+  var guideOpen = false;
+  function wireGuide() {
+    function open() {
+      guideOpen = true;
+      document.getElementById("guide").classList.remove("hidden");
+    }
+    function close() {
+      guideOpen = false;
+      document.getElementById("guide").classList.add("hidden");
+    }
+    document.getElementById("btn-guide").addEventListener("click", open);
+    document.querySelectorAll("[data-close-guide]").forEach(function (el) {
+      el.addEventListener("click", close);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && guideOpen) close();
+    });
+  }
+
   // ---------------------------------------------------------------- input
   function wireInput() {
     document.addEventListener("keydown", function (e) {
       if (e.repeat) return;
+      if (guideOpen) return; // guide modal owns the keyboard while open
       var key = e.key;
       if (key === "ArrowUp" || key === "w" || key === "W")
         doAction("move-forward");
