@@ -1,4 +1,4 @@
-# 🚁 Wild Drone LLM Workshop
+# <img src="webgame/favicon.svg" width="32" height="32" valign="middle" alt="Drone Safari logo" /> Wild Drone LLM Workshop
 
 [![Version](https://img.shields.io/badge/version-1.3.0-8B5CF6?style=flat-square)](https://github.com/alejp1998/wilddrone-llm-workshop)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
