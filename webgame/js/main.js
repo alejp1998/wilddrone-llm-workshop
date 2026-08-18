@@ -206,9 +206,6 @@
       }
     }
 
-    // In-canvas game-over / victory banner (board stays fully visible behind it)
-    if (game.game_over) drawBanner();
-
     // Drone (rotated to its facing direction; North = up on screen)
     var drone = new PIXI.Sprite(
       game.game_over ? sprites.crashed : sprites.drone,
@@ -227,6 +224,7 @@
     board.addChild(drone);
 
     updateHud();
+    updateBanner();
   }
 
   var _lastTrailPos = null;
@@ -308,35 +306,13 @@
     log("🔄 Restarted — difficulty: " + game.difficulty);
   }
 
-  /** In-canvas game-over / victory banner drawn on the board container. */
-  function drawBanner() {
-    var boardPx = cellSize * S.GRID_SIZE;
-    var colors = groundColors();
-    var banner = new PIXI.Container();
-
-    var bW = boardPx * 0.92;
-    var bH = cellSize * 2.6;
-
-    // Scrim behind the banner: full-width translucent bar so the banner pops
-    var scrim = new PIXI.Graphics();
-    scrim
-      .roundRect(
-        -boardPx * 0.02,
-        -cellSize * 0.6,
-        boardPx * 1.04,
-        bH + cellSize * 1.2,
-        14,
-      )
-      .fill({ color: 0x020617, alpha: 0.35 });
-    banner.addChild(scrim);
-
-    // Banner card
-    var box = new PIXI.Graphics();
-    box
-      .roundRect(0, 0, bW, bH, 16)
-      .fill({ color: colors.banner, alpha: 0.99 })
-      .stroke({ width: 4, color: colors.bannerBorder });
-    banner.addChild(box);
+  /** Crisp DOM notification card overlaid on the canvas (board stays visible). */
+  function updateBanner() {
+    var banner = document.getElementById("game-banner");
+    if (!game.game_over) {
+      banner.classList.add("hidden");
+      return;
+    }
 
     var emoji = game.game_won ? "🏆" : "💥";
     var title = game.game_won ? "Mission Accomplished!" : "Mission Failed";
@@ -350,47 +326,23 @@
         out_of_pictures: "Out of pictures — the safari mission is incomplete.",
       }[reason] || "The mission ended.";
 
-    var emojiText = new PIXI.Text({
-      text: emoji,
-      style: { fontSize: cellSize * 0.95 },
-    });
-    emojiText.anchor.set(0.5);
-    emojiText.x = cellSize * 0.85;
-    emojiText.y = bH / 2;
-    banner.addChild(emojiText);
+    document.getElementById("game-banner-emoji").textContent = emoji;
+    document.getElementById("game-banner-title").textContent = title;
+    document.getElementById("game-banner-sub").textContent =
+      sub + "  ·  press R to restart";
+    banner.classList.toggle("fail", !game.game_won);
+    banner.classList.toggle("win", game.game_won);
 
-    var titleText = new PIXI.Text({
-      text: title,
-      style: {
-        fontFamily: "Space Grotesk, sans-serif",
-        fontSize: cellSize * 0.62,
-        fontWeight: "700",
-        fill: game.game_won ? colors.bannerWin : colors.bannerFail,
-      },
-    });
-    titleText.x = cellSize * 1.5;
-    titleText.y = cellSize * 0.42;
-    banner.addChild(titleText);
-
-    var subText = new PIXI.Text({
-      text: sub + "  ·  press R to restart",
-      style: {
-        fontFamily: "DM Sans, sans-serif",
-        fontSize: cellSize * 0.34,
-        fontWeight: "500",
-        fill: colors.bannerMuted,
-        wordWrap: true,
-        wordWrapWidth: bW - cellSize * 1.9,
-      },
-    });
-    subText.x = cellSize * 1.5;
-    subText.y = cellSize * 1.3;
-    banner.addChild(subText);
-
-    // Center the banner over the board
-    banner.x = (boardPx - bW) / 2;
-    banner.y = (boardPx - bH) / 2;
-    board.addChild(banner);
+    // Position over the board (stage = canvas = board coordinate space)
+    var boardPx = cellSize * S.GRID_SIZE;
+    var bannerW = Math.min(560, boardPx * 0.92);
+    var stage = document.getElementById("pixi-stage");
+    var left = board.x + (boardPx - bannerW) / 2;
+    var top = board.y + cellSize * 0.6;
+    banner.style.left = left + "px";
+    banner.style.top = top + "px";
+    banner.style.width = bannerW + "px";
+    banner.classList.remove("hidden");
   }
 
   // ---------------------------------------------------------------- guide modal

@@ -357,3 +357,61 @@ main {
   font-style: italic;
   opacity: 0.85;
 }
+
+/* In-canvas game-over / victory notification (DOM card over the board) */
+.game-banner {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.3rem;
+  box-shadow: 0 14px 40px rgba(2, 6, 23, 0.35);
+  pointer-events: none;
+}
+.game-banner.hidden {
+  display: none;
+}
+.game-banner-emoji {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+.game-banner-title {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.game-banner-sub {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 0.15rem;
+}
+.game-banner.fail {
+  border-color: #b91c1c;
+}
+.game-banner.fail .game-banner-title {
+  color: #b91c1c;
+}
+.game-banner.win {
+  border-color: #059669;
+}
+.game-banner.win .game-banner-title {
+  color: #059669;
+}
+[data-theme="dark"] .game-banner.fail {
+  border-color: #f87171;
+}
+[data-theme="dark"] .game-banner.fail .game-banner-title {
+  color: #f87171;
+}
+[data-theme="dark"] .game-banner.win {
+  border-color: #34d399;
+}
+[data-theme="dark"] .game-banner.win .game-banner-title {
+  color: #34d399;
+}
