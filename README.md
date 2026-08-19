@@ -75,6 +75,10 @@ secrets, so no local setup is needed:
    - Beginners: Open `part1-travel-agent.ipynb`
    - Experienced: Jump to `part2-drone-safari.ipynb`
 
+### 🖼️ Screenshots
+
+![Drone Safari](docs/webgame_light.png)
+
 ## 🎮 The Web Game (PixiJS)
 
 A polished, browser-playable edition of the drone safari game lives in
