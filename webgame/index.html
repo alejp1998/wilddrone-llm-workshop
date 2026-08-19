@@ -31,7 +31,16 @@
       <div class="brand">
         <div class="brand-logo">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
-            <rect x="1" y="1" width="22" height="22" rx="6" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.6" />
+            <rect
+              x="1"
+              y="1"
+              width="22"
+              height="22"
+              rx="6"
+              fill="#FFFFFF"
+              stroke="#0F172A"
+              stroke-width="1.6"
+            />
             <g stroke="#0F172A" stroke-width="1.6" stroke-linecap="round">
               <line x1="10" y1="11.5" x2="6" y2="6.5" />
               <line x1="14" y1="11.5" x2="18" y2="6.5" />
@@ -166,19 +175,81 @@
       <div class="modal-card">
         <button class="modal-close" data-close-guide title="Close">✕</button>
         <div class="modal-title">📖 Drone Safari — Guide</div>
+        <div class="guide-tabs">
+          <button class="guide-tab active" data-tab="theory">🧠 Theory</button>
+          <button class="guide-tab" data-tab="game">🎮 Game</button>
+        </div>
 
-        <section class="guide-section">
-          <h3>🎓 The Workshop Behind This Game</h3>
+        <section class="guide-panel" data-tab="theory">
+          <h3>💡 The big idea in plain words</h3>
           <p>
-            This game is the playground of the
-            <b>Wild Drone LLM Workshop</b> — a hands-on course that teaches
-            students how to build
-            <b
-              >AI agents that understand natural language and control robotic
-              systems</b
-            >. The goal is to make LLM concepts tangible: instead of abstract
-            demos, students drive a drone through natural-language commands and
-            watch the consequences in real time.
+            A large language model is, at its core, a machine that
+            <b>predicts the next word</b> — over and over. Feed it a prompt, it
+            continues the text most plausibly, one token at a time. The trick
+            that makes this useful for robots: if the prompt describes a task,
+            the "most plausible continuation" is often the <b>right action</b> —
+            and with <b>tool calling</b>, the model can ask your code to execute
+            that action in the real world.
+          </p>
+
+          <h3>🔤 Tokens, context and the model's "world"</h3>
+          <p>
+            Text is chopped into small pieces called <b>tokens</b>. The model
+            reads them inside a fixed-size <b>context window</b> and assigns a
+            probability to every possible next token:
+          </p>
+          <p class="math">\[ P(w_{t+1} \mid w_1, \dots, w_t) \]</p>
+          <p>
+            Everything the model "knows" comes from its training data — it has
+            no senses, no memory beyond the context, and no idea that its words
+            have consequences. That is exactly why we add the tools and the
+            feedback loop.
+          </p>
+
+          <h3>🛠️ Tool calling — from words to actions</h3>
+          <p>
+            The model can't move a drone; it can only emit text.
+            <b>Tool calling</b> bridges the gap: the system prompt declares
+            available functions (
+          </p>
+          <p class="math">move(), turn(), take_picture()</p>
+          <p>
+            ), the model responds with a structured "call", and
+            <b>your code</b> executes it and feeds the result back into the
+            conversation. The model becomes the <b>planner</b>; the code becomes
+            the <b>hands</b>.
+          </p>
+
+          <h3>🔄 The agent loop</h3>
+          <p>An <b>agent</b> is the loop that connects all of this:</p>
+          <p class="math">
+            \[ \text{perceive} \rightarrow \text{decide} \rightarrow \text{act}
+            \rightarrow \text{observe} \rightarrow \cdots
+          </p>
+          <p>
+            In the workshop's <b>drone safari</b>, each round the model reads
+            the state (drone position, camera view), decides the next command,
+            the code flies the drone, and the new state goes back in — until the
+            mission completes.
+          </p>
+
+          <h3>✍️ Prompt engineering</h3>
+          <p>
+            The <b>system prompt</b> is the agent's job description: who it is,
+            what tools it has, what rules it must follow. Small wording changes
+            measurably change behaviour — the workshop experiments with this
+            directly, and the game lets you watch the consequences in real time.
+          </p>
+        </section>
+
+        <section class="guide-panel hidden" data-tab="game">
+          <h3>🎮 The Game</h3>
+          <p>
+            Fly the drone across the safari, take pictures of the animals, and
+            complete the mission. The game is the playground of the
+            <b>Wild Drone LLM Workshop</b> — a hands-on course teaching students
+            to build AI agents that understand natural language and control
+            robotic systems.
           </p>
           <ul>
             <li>
@@ -187,8 +258,7 @@
             </li>
             <li>
               <b>Tool calling &amp; function execution</b> — giving an LLM
-              external functions (<code>move()</code>, <code>turn()</code>,
-              <code>take_picture()</code>) so it can act on the world.
+              external functions so it can act on the world.
             </li>
             <li>
               <b>Natural language → robot commands</b> — translating free-form
@@ -203,86 +273,33 @@
               sensor feedback, and autonomous decision loops.
             </li>
           </ul>
-          <p class="guide-note">
-            The notebooks (<code>part1-travel-agent.ipynb</code>,
-            <code>part2-drone-safari.ipynb</code>) build a command agent for
-            this exact game using Python + LiteLLM — try the Colab editions in
-            the <code>colab/</code> folder of the repository.
-          </p>
-        </section>
-
-        <section class="guide-section">
-          <h3>🚁 The Game</h3>
+          <h3>🕹️ Controls</h3>
           <p>
-            Navigate a drone across a <b>12×12 safari park</b> and photograph
-            <b>3 animal species</b> (🦓 zebra, 🐘 elephant, 🦌 oryx) with only
-            <b>5 pictures</b>.
+            WASD / arrows to fly, camera view in the corner, collect the photo
+            targets before fuel runs out.
           </p>
-          <ul>
-            <li>
-              🌳 Avoid trees and park boundaries — crashing ends the mission.
-            </li>
-            <li>
-              📸 An animal must be <b>exactly 2 cells away</b>, in the direction
-              you face, for a valid photo.
-            </li>
-            <li>🚧 A tree between you and the animal blocks the shot.</li>
-            <li>
-              😱 Getting <b>too close</b> (adjacent) scares the animal away —
-              the mission fails.
-            </li>
-            <li>
-              🏆 Photograph all three species to win. Run out of pictures and
-              it's game over.
-            </li>
-            <li>
-              🔋 The <b>Sensors</b> button shows what the drone detects: animal
-              GPS positions, nearby trees and boundaries — just like the sensor
-              tools the workshop agent uses.
-            </li>
-          </ul>
-        </section>
-
-        <section class="guide-section">
-          <h3>🎮 How to Play</h3>
-          <ul>
-            <li>
-              <b>Keyboard:</b> <code>↑</code>/<code>↓</code> move ·
-              <code>←</code>/<code>→</code> turn · <code>Space</code>/<code
-                >Enter</code
-              >
-              photo · <code>R</code> restart · <code>Q</code> quit
-            </li>
-            <li>
-              <b>On-screen:</b> D-pad buttons for move/turn, 📷 for photo, 🔋
-              Sensors for the scan
-            </li>
-            <li>
-              <b>Difficulty:</b> Easy / Medium / Hard changes tree placement and
-              park layout
-            </li>
-            <li>
-              Watch the <b>Flight Log</b> for live feedback — the same messages
-              the LLM agent would receive in the notebooks.
-            </li>
-          </ul>
-        </section>
-
-        <section class="guide-section">
-          <h3>🤖 Agent API (what the LLM uses)</h3>
-          <pre><code>game.move("forward")   # forward | backward | left | right
-game.turn("left")      # left | right
-game.take_picture()    # capture photo</code></pre>
-          <p class="guide-note">
-            Every call returns a message the agent can read — exactly how the
-            workshop's natural-language command agent learns to fly this drone.
+          <h3>🖥️ Source</h3>
+          <p>
+            <a
+              href="https://github.com/alejp1998/wilddrone-llm-workshop"
+              target="_blank"
+              rel="noopener"
+              >github.com/alejp1998/wilddrone-llm-workshop</a
+            >
+            — notebooks, agents, game.
           </p>
         </section>
       </div>
     </div>
 
     <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+      id="MathJax-script"
+      async
+    ></script>
+    <script src="js/guide.js?v=2"></script>
     <script src="js/game-core.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/main.js?v=3"></script>
   </body>
 </html>
